@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1" />
+<title>Kasir - POS (ESC/POS + RawBT)</title>
+
+<!-- Supabase JS -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+:root {
+  --bg:#f7fff9;
+  --primary:#38d47f;
+  --primary-700:#28a96b;
+  --text:#042918;
+  --muted:#4f6f61;
+  --danger:#ef4444;
+  --card:#ffffff;
+  --radius:12px;
+  --shadow:0 10px 30px rgba(6,30,18,0.06);
+  --font:Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg);font-family:var(--font);color:var(--text);-webkit-font-smoothing:antialiased;}
+.header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:linear-gradient(90deg,var(--primary),var(--primary-700));color:#fff;}
+.header .left{display:flex;gap:12px;align-items:center;}
+.logo{width:44px;height:44px;border-radius:10px;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;font-weight:800;}
+.container{max-width:1100px;margin:14px auto;padding:12px;}
+.grid{display:grid;grid-template-columns:1fr;gap:12px;}
+@media(min-width:1000px){ .grid{grid-template-columns:420px 1fr;} }
+
+/* menu/search */
+.card{background:var(--card);border-radius:var(--radius);padding:12px;box-shadow:var(--shadow);}
+.search{display:flex;gap:8px;margin-bottom:8px;}
+.search input{flex:1;padding:10px;border-radius:10px;border:1px solid #e6f3ea;}
+
+/* list menu */
+.menu-list{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;max-height:500px;overflow:auto;padding:6px;}
+@media(min-width:600px){ .menu-list{grid-template-columns:repeat(3,1fr);} }
+.menu-item{background:#fbfff9;padding:10px;border-radius:10px;border:1px solid rgba(72,212,135,0.09);cursor:pointer;display:flex;flex-direction:column;gap:6px;}
+.menu-item .name{font-weight:700;}
+.menu-item .price{font-size:0.9rem;color:var(--muted);}
+
+/* cart / pembayaran */
+.cart-list{max-height:360px;overflow:auto;padding:4px;border-radius:8px;background:#fff;border:1px solid #eef9f0;}
+.cart-row{display:flex;justify-content:space-between;align-items:center;padding:8px;border-bottom:1px solid #f1f6f3;}
+.cart-left{display:flex;flex-direction:column;}
+.qty-controls{display:flex;gap:6px;align-items:center;}
+.qty-controls button{padding:6px 8px;border-radius:8px;border:1px solid #eee;background:transparent;cursor:pointer;}
+.qty-input{width:72px;padding:6px;border-radius:8px;border:1px solid #e6f3ea;}
+
+.totals{margin-top:12px;display:flex;flex-direction:column;gap:8px;}
+.row{display:flex;justify-content:space-between;align-items:center;}
+.input{padding:8px;border-radius:8px;border:1px solid #e6f3ea;width:100%;}
+
+/* buttons */
+.btn{background:var(--primary);color:#fff;padding:10px;border-radius:10px;border:0;cursor:pointer;font-weight:700;}
+.btn.ghost{background:var(--text);border:1px solid rgba(72,212,135,0.12);color:var(--primary);}
+.btn.danger{background:var(--danger);color:#fff;}
+.btn:hover{opacity:0.95;transform:translateY(-2px);transition:0.12s;}
+
+/* modals */
+.modal-backdrop{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.45);z-index:1200;padding:12px;}
+.modal{width:100%;max-width:520px;background:var(--card);border-radius:12px;padding:16px;box-shadow:0 12px 34px rgba(0,0,0,0.18);}
+.kecil{font-size:0.9rem;color:var(--muted);}
+
+/* spinner */
+.spinner{width:36px;height:36px;border-radius:50%;border:4px solid #e6f6ea;border-top-color:var(--primary);animation:spin .9s linear infinite;display:none;margin:auto;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* print area hidden */
+.print-area{display:none;}
+
+/* toast */
+.toast{position:fixed;right:16px;bottom:16px;background:#111;color:#fff;padding:10px 12px;border-radius:8px;z-index:9999;opacity:0.95;}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="left">
+    <div class="logo">KS</div>
+    <div>
+      <div style="font-weight:700" id="storeTitle">Kasir POS</div>
+      <div style="font-size:0.9rem" id="storePhone"></div>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center">
+    
+    <a href="index.html"><button class="btn ghost" onclick="goIndex()">Kembali</button></a>
+    <button class="btn ghost" onclick="openSettings()">Settings RawBT</button>
+    <button class="btn ghost" onclick="openExpenseModal()">Input Pengeluaran</button>
+  </div>
+</div>
+
+<div class="container">
+  <div class="grid">
+    <!-- Menu & Search -->
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div class="search" style="flex:1">
+          <input id="searchMenu" placeholder="Cari menu..." oninput="renderMenu()" />
+        </div>
+        <button class="btn ghost" onclick="loadMenu()">Refresh</button>
+      </div>
+      <div id="menuList" class="menu-list"></div>
+      <div id="spinMenu" class="spinner" style="margin-top:8px"></div>
+    </div>
+
+    <!-- Cart & Payment -->
+    <div class="card">
+      <div style="font-weight:800;margin-bottom:8px">Daftar Pembelian</div>
+      <div id="cartList" class="cart-list">
+        <div class="center kecil" style="padding:16px">Belum ada item</div>
+      </div>
+
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button class="btn ghost" onclick="resetCart()">Reset Pembelian</button>
+        <button class="btn ghost" onclick="openCartModal()">Edit Manual</button>
+      </div>
+
+      <div class="totals">
+        <div class="row"><div>Sub Total</div><div id="totalText">Rp 0</div></div>
+
+        <div style="display:flex;gap:8px">
+          <div style="flex:1">
+            <label class="kecil">Diskon (Rp)</label>
+            <input id="inputDiscount" class="input" type="number" min="0" value="0" oninput="recalculate()" />
+          </div>
+          <div style="flex:1">
+            <label class="kecil">Bayar (Rp)</label>
+            <input id="inputPaid" class="input" type="number" min="0" value="0" oninput="recalculate()" />
+          </div>
+        </div>
+
+        <div class="row"><div>Subtotal (setelah diskon)</div><div id="subtotalText">Rp 0</div></div>
+        <div class="row"><div>Kembalian</div><div id="changeText">Rp 0</div></div>
+
+        <div style="display:flex;gap:8px">
+          <button class="btn" onclick="onPay()">Bayar</button>
+        </div>
+      </div>
+
+      <div id="spinSave" class="spinner" style="margin-top:10px"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Expense (pengeluaran) -->
+<div id="modalExpense" class="modal-backdrop">
+  <div class="modal">
+    <h3>Input Pengeluaran</h3>
+    <div style="margin-top:8px">
+      <label class="kecil">Keterangan</label>
+      <input id="expenseNote" type="text" placeholder="Contoh: Beli plastik struk"
+             style="width:100%;padding:8px;border-radius:8px;border:1px solid #e6f3ea" />
+    </div>
+    <div style="margin-top:8px">
+      <label class="kecil">Biaya (Rp)</label>
+      <input id="expenseCost" type="number" min="0"
+             style="width:100%;padding:8px;border-radius:8px;border:1px solid #e6f3ea" />
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+      <button class="btn ghost" onclick="closeExpenseModal()">Tutup</button>
+      <button class="btn" onclick="saveExpense()">Simpan</button>
+    </div>
+    <div id="spinExpense" class="spinner" style="margin-top:10px"></div>
+  </div>
+</div>
+
+<!-- Modal: Pay / Cetak -->
+<div id="modalPay" class="modal-backdrop">
+  <div class="modal">
+    <h3>Konfirmasi Pembayaran</h3>
+    <div id="paySummary" class="kecil">Memproses...</div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+      <button class="btn ghost" onclick="closePayModal(false)">Tidak Cetak</button>
+      <button class="btn" onclick="closePayModal(true)">Cetak & Kirim ke RawBT</button>
+    </div>
+    <div id="spinPrint" class="spinner" style="margin-top:10px"></div>
+  </div>
+</div>
+
+<!-- Modal: Settings RawBT -->
+<div id="modalSettings" class="modal-backdrop">
+  <div class="modal">
+    <h3>Settings RawBT</h3>
+    <div style="margin-top:8px">
+      <label class="kecil">Endpoint RawBT</label>
+      <input id="rawbtUrl" type="text" placeholder="https://api.rawbt.eu/print"
+             style="width:100%;padding:8px;border-radius:8px;border:1px solid #e6f3ea" />
+    </div>
+    <div style="margin-top:8px">
+      <label class="kecil">Printer ID</label>
+      <input id="rawbtPrinter" type="text" placeholder="Printer ID"
+             style="width:100%;padding:8px;border-radius:8px;border:1px solid #e6f3ea" />
+    </div>
+    <div style="margin-top:8px">
+      <label class="kecil">API Key (opsional)</label>
+      <input id="rawbtKey" type="text" placeholder="API Key (opsional)"
+             style="width:100%;padding:8px;border-radius:8px;border:1px solid #e6f3ea" />
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+      <button class="btn ghost" onclick="closeSettings()">Batal</button>
+      <button class="btn" onclick="saveSettings()">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Edit Cart Manual -->
+<div id="modalCartEdit" class="modal-backdrop">
+  <div class="modal">
+    <h3>Edit Pembelian</h3>
+    <div id="modalCartBody" style="max-height:360px;overflow:auto"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+      <button class="btn ghost" onclick="closeCartModal()">Tutup</button>
+      <button class="btn" onclick="saveCartEdits()">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- area hidden untuk fallback print -->
+<div id="receiptArea" class="print-area"></div>
+
+<script>
+/* ===== Supabase init ===== */
+const SUPABASE_URL = "https://mcqjsoadadjrjwwqfzjh.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable___GKiTfqGSEgxJ4-MZtfow_MnkSZUu5";
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+/* ===== state ===== */
+let menuItems = [];
+let cart = {};
+let rawbtConfig = { url:null, printer:null, key:null };
+
+/* ===== util ===== */
+function fmtNum(n){ return Number(n||0).toLocaleString('id'); }
+function fmt(n){ return 'Rp ' + fmtNum(n); }
+function el(id){ return document.getElementById(id); }
+function show(id){ el(id).style.display = 'flex'; }
+function hide(id){ el(id).style.display = 'none'; }
+function toast(msg){ const t=document.createElement('div'); t.className='toast'; t.innerText=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),2400); }
+function escapeHtml(s){ if (s==null) return ''; return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m]); }
+
+/* ===== load settings from localStorage ===== */
+function loadSettingsFromStorage(){
+  try { const s = localStorage.getItem('rawbt_config'); if (s){ rawbtConfig=JSON.parse(s); el('rawbtUrl').value = rawbtConfig.url||''; el('rawbtPrinter').value = rawbtConfig.printer||''; el('rawbtKey').value = rawbtConfig.key||''; } } catch(e){}
+}
+loadSettingsFromStorage();
+
+/* ===== store info ===== */
+async function loadStoreInfo(){
+  try {
+    const { data } = await db.from('toko_info').select('nama_toko,no_hp').limit(1).maybeSingle();
+    if (data){
+      el('storeTitle').textContent = data.nama_toko || 'Kasir POS';
+      el('storePhone').textContent = data.no_hp || '';
+    }
+  } catch(e){}
+}
+loadStoreInfo();
+
+/* ===== load menu ===== */
+async function loadMenu(){
+  el('menuList').innerHTML = '';
+  show('spinMenu');
+  // try table 'menu'; else fallback 'stok_barang'
+  let r = await db.from('menu').select('*').order('id',{ascending:true});
+  if (!r.error && r.data && r.data.length){
+    menuItems = r.data.map(m => ({
+      id: m.id,
+      nama: m.nama || m.name || m.nama_menu,
+      price: Number(m.harga || m.harga_jual || 0),
+      modal: Number(m.modal || 0),
+      stok: m.jumlah ?? null
+    }));
+  } else {
+    const r2 = await db.from('stok_barang').select('*').order('id',{ascending:true});
+    menuItems = (r2.data||[]).map(m => ({
+      id: m.id,
+      nama: m.nama,
+      price: Number(m.harga_jual||0),
+      modal: Number(m.modal||0),
+      stok: m.jumlah
+    }));
+  }
+  hide('spinMenu');
+  renderMenu();
+}
+loadMenu();
+
+/* ===== render menu with live search ===== */
+function renderMenu(){
+  const q = (el('searchMenu').value||'').trim().toLowerCase();
+  const list = el('menuList');
+  list.innerHTML = '';
+  const items = menuItems.filter(it => !q || (it.nama||'').toLowerCase().includes(q));
+  if (!items.length){
+    list.innerHTML = '<div class="center kecil" style="padding:14px">Menu kosong</div>';
+    return;
+  }
+  items.forEach(it => {
+    const d = document.createElement('div');
+    d.className = 'menu-item';
+    d.innerHTML = `<div class="name">${escapeHtml(it.nama)}</div><div class="price">${fmt(it.price)}</div>`;
+    d.onclick = ()=> addToCart(it);
+    list.appendChild(d);
+  });
+}
+
+/* ===== cart operations ===== */
+function addToCart(item){
+  const id = item.id;
+  if (!cart[id]) cart[id] = { id, nama: item.nama, price: item.price, modal: item.modal||0, qty: 0, subtotal: 0 };
+  cart[id].qty += 1;
+  cart[id].subtotal = cart[id].qty * cart[id].price;
+  renderCart();
+}
+function decQty(id){ if(!cart[id]) return; cart[id].qty = Math.max(0, cart[id].qty-1); if(cart[id].qty===0) delete cart[id]; else cart[id].subtotal = cart[id].qty * cart[id].price; renderCart(); }
+function incQty(id){ if(!cart[id]) return; cart[id].qty += 1; cart[id].subtotal = cart[id].qty * cart[id].price; renderCart(); }
+function setQty(id, val){ if(!cart[id]) return; const q = parseInt(val)||0; if(q<=0) delete cart[id]; else { cart[id].qty = q; cart[id].subtotal = q * cart[id].price; } renderCart(); }
+function removeItem(id){ delete cart[id]; renderCart(); }
+function resetCart(){ cart = {}; renderCart(); }
+
+/* ===== render cart UI ===== */
+function renderCart(){
+  const wrap = el('cartList');
+  wrap.innerHTML = '';
+  const keys = Object.keys(cart);
+  if (keys.length === 0){
+    wrap.innerHTML = '<div class="center kecil" style="padding:18px">Belum ada item</div>';
+    updateTotals();
+    return;
+  }
+  keys.forEach(k=>{
+    const it = cart[k];
+    const row = document.createElement('div');
+    row.className = 'cart-row';
+    row.innerHTML = `
+      <div class="cart-left">
+        <div style="font-weight:700">${escapeHtml(it.nama)}</div>
+        <div class="kecil">Rp ${fmtNum(it.price)}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="qty-controls">
+          <button onclick="decQty('${k}')">-</button>
+          <input class="qty-input" type="number" min="0" value="${it.qty}" onchange="setQty('${k}', this.value)" />
+          <button onclick="incQty('${k}')">+</button>
+        </div>
+        <div style="width:14px"></div>
+        <div style="text-align:right">
+          <div style="font-weight:700">Rp ${fmtNum(it.subtotal)}</div>
+          <div style="margin-top:6px"><button class="btn ghost" onclick="removeItem('${k}')">Hapus</button></div>
+        </div>
+      </div>
+    `;
+    wrap.appendChild(row);
+  });
+  updateTotals();
+}
+
+/* ===== totals & recalc ===== */
+function getCartTotal(){ return Object.values(cart).reduce((s,it)=> s + Number(it.subtotal||0), 0); }
+function updateTotals(){ el('totalText').textContent = fmt(getCartTotal()); recalculate(); }
+function recalculate(){
+  const total = getCartTotal();
+  const discount = Number(el('inputDiscount').value || 0);
+  const paid = Number(el('inputPaid').value || 0);
+  const subtotal = Math.max(0, total - discount);
+  const change = Math.max(0, paid - subtotal);
+  el('subtotalText').textContent = fmt(subtotal);
+  el('changeText').textContent = fmt(change);
+}
+
+/* ===== export cart CSV helper ===== */
+function exportCartCSV(){
+  const rows = [['nama','qty','harga','subtotal']];
+  Object.values(cart).forEach(it => rows.push([it.nama, it.qty, it.price, it.subtotal]));
+  const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type:'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'cart_export.csv';
+  a.click();
+}
+
+/* ===== expense (pengeluaran) ===== */
+function openExpenseModal(){ el('modalExpense').style.display = 'flex'; }
+function closeExpenseModal(){ el('modalExpense').style.display = 'none'; }
+async function saveExpense(){
+  const note = el('expenseNote').value.trim();
+  const cost = Number(el('expenseCost').value || 0);
+  if (!note){
+    toast("Keterangan wajib diisi");
+    return;
+  }
+  if (cost <= 0){
+    toast("Biaya harus lebih besar dari 0");
+    return;
+  }
+  show('spinExpense');
+  const { data, error } = await db.from('pengeluaran').insert({ keterangan: note, jumlah: cost }).select().single();
+  hide('spinExpense');
+  if (error || !data){
+    console.error(error);
+    toast("Gagal menyimpan pengeluaran");
+  } else {
+    toast("Pengeluaran tersimpan");
+    el('expenseNote').value = "";
+    el('expenseCost').value = "";
+    closeExpenseModal();
+  }
+}
+
+/* ===== payment flow ===== */
+function onPay(){
+  if (Object.keys(cart).length === 0){
+    toast("Belum ada item");
+    return;
+  }
+  const total = getCartTotal();
+  const discount = Number(el('inputDiscount').value || 0);
+  const paid = Number(el('inputPaid').value || 0);
+  const subtotal = Math.max(0, total - discount);
+  const change = Math.max(0, paid - subtotal);
+  el('paySummary').innerHTML = `
+    <div class="kecil">Total: ${fmt(total)}</div>
+    <div class="kecil">Diskon: ${fmt(discount)}</div>
+    <div class="kecil">Subtotal: ${fmt(subtotal)}</div>
+    <div class="kecil">Bayar: ${fmt(paid)} — Kembalian: ${fmt(change)}</div>
+    <div style="height:8px"></div>
+    <div class="kecil">Cetak struk? (RawBT)</div>
+  `;
+  el('modalPay').style.display = 'flex';
+}
+function closePayModal(flag){ el('modalPay').style.display = 'none'; processPayment(!!flag); }
+
+/* ===== process payment ===== */
+async function processPayment(printFlag){
+  const total = getCartTotal();
+  if (total <= 0) { toast("Total kosong"); return; }
+  const discount = Number(el('inputDiscount').value || 0);
+  const paid = Number(el('inputPaid').value || 0);
+  const subtotal = Math.max(0, total - discount);
+  const change = Math.max(0, paid - subtotal);
+
+  show('spinSave');
+
+  const tanggal = new Date().toISOString().slice(0,10);
+  const { data: trxData, error: trxErr } = await db.from('transaksi').insert({
+    tanggal,
+    total_pengeluaran: 0,
+    total_penjualan: total,
+    subtotal: subtotal
+  }).select().single();
+
+  const trxId = trxData?.id;
+
+  const itemsPayload = Object.values(cart).map(it => ({
+    transaksi_id: trxId,
+    nama_barang: it.nama,
+    jumlah: it.qty,
+    harga_modal: it.modal || 0,
+    harga_jual: it.price,
+    subtotal: it.subtotal
+  }));
+
+  if (itemsPayload.length){
+    await db.from('transaksi_item').insert(itemsPayload);
+  }
+
+  hide('spinSave');
+
+  // fetch store info
+  const store = await db.from('toko_info').select('nama_toko,no_hp').limit(1).maybeSingle().then(r=>r.data||{});
+
+  // buat ESC/POS struk
+  const escposStr = buildEscPos({
+    storeName: store.nama_toko || '',
+    storePhone: store.no_hp || '',
+    items: itemsPayload,
+    total, paid, change, subtotal, trxId
+  });
+
+  if (printFlag){
+    const sent = await sendToRawBT(escposStr);
+    if (!sent){
+      openPrintWindow(buildReceiptHtml({ storeName: store.nama_toko || '', storePhone: store.no_hp || '', items: itemsPayload, total, paid, change, subtotal, trxId }));
+      toast("RawBT gagal, fallback ke print browser");
+    } else {
+      toast("Struk dikirim ke printer");
+    }
+  } else {
+    toast("Transaksi tersimpan (tanpa cetak)");
+  }
+
+  resetCart();
+  el('inputPaid').value = 0;
+  el('inputDiscount').value = 0;
+  recalculate();
+}
+
+/* ===== build receipt html (fallback print) ===== */
+function buildReceiptHtml({ storeName, storePhone, items, total, paid, change, subtotal, trxId }){
+  const now = new Date();
+  const dateStr = now.toLocaleDateString();
+  const timeStr = now.toLocaleTimeString();
+  let rows = '';
+  (items||[]).forEach(it => {
+    rows += `<tr><td>${escapeHtml(it.nama_barang)}</td><td style="text-align:right">${it.jumlah} x ${fmtNum(it.harga_jual)}</td></tr>`;
+    rows += `<tr><td></td><td style="text-align:right">Rp ${fmtNum(it.subtotal)}</td></tr>`;
+  });
+  return `
+    <div style="width:58mm;font-family:monospace;padding:6px">
+      <div style="text-align:center;font-weight:700">${escapeHtml(storeName)}</div>
+      <div style="text-align:center;font-size:12px">${escapeHtml(storePhone)}</div>
+      <div style="text-align:center;font-size:11px">${dateStr} ${timeStr}</div>
+      <hr>
+      <table style="width:100%">${rows}</table>
+      <hr>
+      <table style="width:100%;font-weight:700">
+        <tr><td>Total</td><td style="text-align:right">Rp ${fmtNum(total)}</td></tr>
+        <tr><td>Bayar</td><td style="text-align:right">Rp ${fmtNum(paid)}</td></tr>
+        <tr><td>Kembali</td><td style="text-align:right">Rp ${fmtNum(change)}</td></tr>
+      </table>
+      <div style="text-align:center;margin-top:8px;font-size:11px">Terima kasih</div>
+      <div style="text-align:center;font-size:10px;margin-top:6px">Transaksi: ${trxId}</div>
+    </div>`;
+}
+
+/* ===== ESC/POS builder ===== */
+function buildEscPos({ storeName, storePhone, items, total, paid, change, subtotal, trxId }){
+  const ESC = "\x1B";
+  const GS = "\x1D";
+  let out = '';
+  out += ESC + "@";
+  out += ESC + "t" + "\x10";        // kode page CP1252
+  out += ESC + "a" + "\x01";        // center
+  out += ESC + "!" + "\x30";        // double size
+  out += storeName + "\n";
+  out += ESC + "!" + "\x00";
+  if (storePhone) out += storePhone + "\n";
+  const now = new Date();
+  out += now.toLocaleDateString() + " " + now.toLocaleTimeString() + "\n";
+  out += "-------------------------------\n";
+  out += ESC + "a" + "\x00";        // left
+  items.forEach(it=>{
+    out += it.nama_barang + "\n";
+    const left = `${it.jumlah} x ${fmtNum(it.harga_jual)}`;
+    const right = `Rp ${fmtNum(it.subtotal)}`;
+    out += padBoth(left, right, 32) + "\n";
+  });
+  out += "-------------------------------\n";
+  out += padBoth("TOTAL", `Rp ${fmtNum(total)}`, 32) + "\n";
+  out += padBoth("BAYAR", `Rp ${fmtNum(paid)}`, 32) + "\n";
+  out += padBoth("KEMBALI", `Rp ${fmtNum(change)}`, 32) + "\n";
+  out += "\n\n";
+  out += "Terima kasih\n";
+  out += `Transaksi: ${trxId}\n\n`;
+  out += GS + "V" + "\x01";         // cut
+  return out;
+}
+function padBoth(left, right, width){
+  const mid = width - (left.length + right.length);
+  const spaces = mid > 0 ? ' '.repeat(mid) : ' ';
+  return left + spaces + right;
+}
+
+/* ===== send to RawBT ===== */
+async function sendToRawBT(escposStr){
+  loadSettingsFromStorage();
+  const { url, printer, key } = rawbtConfig;
+  if (!url || !printer){
+    toast("RawBT belum dikonfigurasi");
+    return false;
+  }
+  try {
+    const payload = { printer, data: escposStr };
+    const headers = { 'Content-Type':'application/json' };
+    if (key) headers['Authorization'] = 'Bearer ' + key;
+    const resp = await fetch(url, { method:'POST', headers, body: JSON.stringify(payload) });
+    if (!resp.ok){
+      console.warn('RawBT status', resp.status);
+      return false;
+    }
+    return true;
+  } catch(e){
+    console.error('RawBT error', e);
+    return false;
+  }
+}
+
+/* ===== Settings modal functions ===== */
+function openSettings(){ el('modalSettings').style.display='flex'; loadSettingsFromInputs(); }
+function closeSettings(){ el('modalSettings').style.display='none'; }
+function loadSettingsFromInputs(){
+  try {
+    const s = localStorage.getItem('rawbt_config');
+    if (s){
+      const o = JSON.parse(s);
+      el('rawbtUrl').value = o.url || '';
+      el('rawbtPrinter').value = o.printer || '';
+      el('rawbtKey').value = o.key || '';
+    }
+  } catch(e){}
+}
+function saveSettings(){
+  rawbtConfig.url = el('rawbtUrl').value.trim();
+  rawbtConfig.printer = el('rawbtPrinter').value.trim();
+  rawbtConfig.key = el('rawbtKey').value.trim();
+  localStorage.setItem('rawbt_config', JSON.stringify(rawbtConfig));
+  closeSettings();
+  toast('Settings RawBT disimpan');
+}
+
+/* ===== Cart Edit modal ===== */
+function openCartModal(){
+  el('modalCartEdit').style.display = 'flex';
+  const body = el('modalCartBody');
+  body.innerHTML = '';
+  Object.values(cart).forEach(it => {
+    const row = document.createElement('div');
+    row.style.display = 'flex';
+    row.style.gap = '8px';
+    row.style.marginBottom = '8px';
+    row.innerHTML = `<div style="flex:2">${escapeHtml(it.nama)}</div>
+      <div style="flex:1">
+        <input type="number" min="0" value="${it.qty}" data-id="${it.id}"
+               style="width:100%;padding:6px;border-radius:6px;border:1px solid #e6f3ea" />
+      </div>`;
+    body.appendChild(row);
+  });
+}
+function closeCartModal(){ el('modalCartEdit').style.display = 'none'; }
+function saveCartEdits(){
+  const inputs = el('modalCartBody').querySelectorAll('input[type="number"]');
+  inputs.forEach(inp => {
+    const id = inp.dataset.id;
+    const q = parseInt(inp.value) || 0;
+    if (q <= 0) delete cart[id];
+    else { cart[id].qty = q; cart[id].subtotal = q * cart[id].price; }
+  });
+  closeCartModal();
+  renderCart();
+}
+
+/* ===== init ===== */
+(function init(){
+  loadMenu();
+  renderCart();
+  loadSettingsFromStorage();
+})();
+</script>
+</body>
+</html>

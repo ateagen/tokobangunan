@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+<title>Stok Barang</title>
+
+<!-- Supabase -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+:root{
+  --bg:#f7fff9;
+  --card:#ffffff;
+  --text:#0b2a1f;
+  --muted:#4f665d;
+  --primary:#48d487;
+  --primary-700:#2fa76a;
+  --danger:#ef4444;
+  --radius:12px;
+  --shadow:0 8px 24px rgba(9,30,18,0.06);
+  --font-sans: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:var(--bg);font-family:var(--font-sans);color:var(--text)}
+.container{max-width:920px;margin:16px auto;padding:12px}
+.header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.logo{width:52px;height:52px;border-radius:12px;background:linear-gradient(135deg,var(--primary),var(--primary-700));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;box-shadow:var(--shadow)}
+h1{margin:0;font-size:1.05rem}
+.lead{color:var(--muted);font-size:0.95rem}
+
+/* layout */
+.grid{display:grid;grid-template-columns:1fr;gap:14px}
+@media(min-width:900px){ .grid{grid-template-columns:380px 1fr} }
+
+/* card */
+.card{background:var(--card);border-radius:12px;padding:14px;box-shadow:var(--shadow)}
+
+/* form */
+.form-row{display:flex;flex-direction:column;margin-bottom:10px}
+label{font-size:0.9rem;color:var(--muted);margin-bottom:6px}
+input[type="text"],input[type="number"]{padding:10px;border-radius:10px;border:1px solid #e6f3ea;background:#fcfffb}
+
+/* buttons */
+.btn{display:inline-flex;align-items:center;gap:8px;padding:10px 12px;border-radius:10px;border:0;background:var(--primary);color:#fff;font-weight:700;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--primary);border:1px solid rgba(72,212,135,0.12)}
+.btn.danger{background:var(--danger);color:white}
+
+/* table */
+.table-wrap{overflow:auto}
+table{width:100%;border-collapse:collapse;font-size:0.95rem}
+th,td{padding:10px;text-align:left;border-bottom:1px solid #f1f6f3}
+th{background:#eaffef;color:var(--muted);font-weight:700}
+
+/* modal */
+.modal-backdrop{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,2,0.45);z-index:1200;padding:16px}
+.modal{width:100%;max-width:520px;background:var(--card);border-radius:12px;padding:16px;box-shadow:0 12px 34px rgba(0,0,0,0.18)}
+.small{font-size:0.9rem;color:var(--muted)}
+
+/* spinner */
+.spinner{width:40px;height:40px;border-radius:50%;border:4px solid #e6f6ea;border-top-color:var(--primary);animation:spin .9s linear infinite;display:none;margin:auto}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* utility */
+.center{text-align:center}
+.kecil{font-size:0.85rem;color:var(--muted)}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <div style="display:flex;align-items:center;gap:12px">
+      <div class="logo">ST</div>
+      <div>
+        <h1>Kelola Stok — Admin</h1>
+        <div class="lead">Edit nama, modal, harga jual, tambah/kurangi stok, dan hapus — semua tercatat.</div>
+      </div>
+    </div>
+    <div class="kecil">Mobile-first • Supabase-ready</div>
+  </div>
+
+  <div class="grid">
+    <!-- LEFT: tambah -->
+    <div class="card">
+      <h3 style="margin-top:0">Tambah Stok Baru</h3>
+
+      <div class="form-row">
+        <label for="nama">Nama Barang</label>
+        <input id="nama" type="text" placeholder="Contoh: Semen">
+      </div>
+
+      <div class="form-row">
+        <label for="jumlah">Jumlah Stok</label>
+        <input id="jumlah" type="number" min="0" placeholder="50">
+      </div>
+
+      <div class="form-row">
+        <label for="modal">Harga Modal (Rp)</label>
+        <input id="modal" type="number" min="0" placeholder="50000">
+      </div>
+
+      <div class="form-row">
+        <label for="harga_jual">Harga Jual (Rp)</label>
+        <input id="harga_jual" type="number" min="0" placeholder="60000">
+      </div>
+
+      <div style="display:flex;gap:10px;align-items:center">
+        <button id="btnTambah" class="btn" onclick="tambahBarang()">Simpan Barang</button>
+        <button class="btn ghost" onclick="clearAddForm()">Reset</button>
+      </div>
+
+      <div style="margin-top:12px" id="spinSaveWrap">
+        <div id="spinSave" class="spinner" aria-hidden="true"></div>
+      </div>
+      <div style="margin-top:10px" class="kecil">Perubahan otomatis dicatat ke <code>stok_log</code>.</div>
+    </div>
+
+    <!-- RIGHT: tabel -->
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <h3 style="margin:0">Daftar Stok</h3>
+        <div><button class="btn ghost" onclick="loadStok()">Refresh</button></div>
+      </div>
+
+      <div id="spinLoadWrap" class="center" style="margin-bottom:8px">
+        <div id="spinLoad" class="spinner" aria-hidden="true"></div>
+      </div>
+
+      <div class="table-wrap">
+        <table id="tblStok">
+          <thead>
+            <tr><th>Nama</th><th>Stok</th><th>Harga Modal</th><th>Harga Jual</th><th>Aksi</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT MODAL -->
+<div id="modalEditBackdrop" class="modal-backdrop">
+  <div class="modal">
+    <h3 style="margin:0">Edit Barang</h3>
+    <div style="height:8px"></div>
+
+    <div class="form-row">
+      <label>Nama</label>
+      <input id="edit_nama" type="text">
+    </div>
+
+    <div class="form-row">
+      <label>Harga Modal (Rp)</label>
+      <input id="edit_modal" type="number" min="0">
+    </div>
+
+    <div class="form-row">
+      <label>Harga Jual (Rp)</label>
+      <input id="edit_harga" type="number" min="0">
+    </div>
+
+    <div class="form-row">
+      <label>Jumlah Stok (set manual)</label>
+      <input id="edit_jumlah" type="number" min="0">
+      <div class="small">Atau gunakan "Tambah" / "Kurangi" di bawah untuk operasi cepat.</div>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button class="btn" onclick="saveEdit()">Simpan</button>
+      <button class="btn ghost" onclick="closeEdit()">Batal</button>
+      <button class="btn danger" style="margin-left:auto" onclick="hapusStok()">Hapus</button>
+    </div>
+
+    <div style="margin-top:12px;display:flex;gap:8px">
+      <input id="quickTambah" type="number" min="0" placeholder="Tambah stok (contoh: 10)" style="flex:1;padding:8px;border-radius:8px;border:1px solid #e6f3ea">
+      <input id="quickKurangi" type="number" min="0" placeholder="Kurangi stok (contoh: 5)" style="flex:1;padding:8px;border-radius:8px;border:1px solid #e6f3ea">
+    </div>
+
+    <div style="margin-top:12px" id="spinEditWrap">
+      <div id="spinEdit" class="spinner" aria-hidden="true"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* =============================
+   Supabase init (patokan)
+============================= */
+const SUPABASE_URL = "https://mcqjsoadadjrjwwqfzjh.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable___GKiTfqGSEgxJ4-MZtfow_MnkSZUu5";
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+/* state */
+let editId = null;
+let jumlahAwal = 0;
+
+/* helper */
+function show(id){ document.getElementById(id).style.display = "block"; }
+function hide(id){ document.getElementById(id).style.display = "none"; }
+function el(id){ return document.getElementById(id); }
+function clearAddForm(){
+  el('nama').value = "";
+  el('jumlah').value = "";
+  el('modal').value = "";
+  el('harga_jual').value = "";
+}
+
+/* =============================
+   LOAD STOK
+============================= */
+async function loadStok(){
+  const tbody = document.querySelector("#tblStok tbody");
+  tbody.innerHTML = "";
+  show('spinLoad');
+
+  const { data, error } = await db.from('stok_barang').select('*').order('id', { ascending: false });
+
+  hide('spinLoad');
+
+  if (error) {
+    tbody.innerHTML = `<tr><td colspan="5" class="kecil center">Gagal memuat data</td></tr>`;
+    return;
+  }
+  if (!data || data.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="5" class="kecil center">Belum ada barang</td></tr>`;
+    return;
+  }
+
+  data.forEach(item=>{
+    const tr = document.createElement('tr');
+
+    // escape simple
+    const nameSafe = String(item.nama ?? '').replace(/'/g,"\\'").replace(/"/g,'&quot;');
+
+    tr.innerHTML = `
+      <td>${item.nama ?? ''}</td>
+      <td>${item.jumlah ?? 0}</td>
+      <td>Rp ${Number(item.modal ?? 0).toLocaleString('id')}</td>
+      <td>Rp ${Number(item.harga_jual ?? 0).toLocaleString('id')}</td>
+      <td><button class="btn ghost" onclick="openEdit(${item.id})">Edit</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+/* initial load */
+loadStok();
+
+/* =============================
+   TAMBAH BARANG
+============================= */
+async function tambahBarang(){
+  const namaVal = el('nama').value.trim();
+  const jumlahVal = parseInt(el('jumlah').value || 0);
+  const modalVal = parseInt(el('modal').value || 0);
+  const hargaVal = parseInt(el('harga_jual').value || 0);
+
+  // simple validation
+  if (!namaVal || jumlahVal <= 0 || modalVal < 0 || hargaVal < 0) return;
+
+  show('spinSave');
+
+  const { data, error } = await db.from('stok_barang')
+    .insert([{ nama: namaVal, jumlah: jumlahVal, modal: modalVal, harga_jual: hargaVal }])
+    .select();
+
+  if (!error && data && data.length > 0){
+    const newRow = data[0];
+    await db.from('stok_log').insert([{
+      barang_id: newRow.id,
+      nama: newRow.nama,
+      aksi: 'tambah',
+      jumlah_awal: 0,
+      jumlah_akhir: newRow.jumlah,
+      tanggal: new Date().toISOString()
+    }]);
+  }
+
+  hide('spinSave');
+  clearAddForm();
+  await loadStok();
+}
+
+/* =============================
+   OPEN EDIT MODAL
+   populate fields from DB for safety
+============================= */
+async function openEdit(id){
+  show('spinLoad');
+  const { data, error } = await db.from('stok_barang').select('*').eq('id', id).maybeSingle();
+  hide('spinLoad');
+
+  if (!data) return;
+  editId = id;
+  jumlahAwal = data.jumlah ?? 0;
+
+  el('edit_nama').value = data.nama ?? '';
+  el('edit_modal').value = data.modal ?? '';
+  el('edit_harga').value = data.harga_jual ?? '';
+  el('edit_jumlah').value = data.jumlah ?? 0;
+  el('quickTambah').value = "";
+  el('quickKurangi').value = "";
+
+  el('modalEditBackdrop').style.display = 'flex';
+}
+
+/* close */
+function closeEdit(){
+  editId = null;
+  jumlahAwal = 0;
+  el('modalEditBackdrop').style.display = 'none';
+}
+
+/* =============================
+   SAVE EDIT (name, modal, harga, manual set jumlah OR quick add/subtract)
+   - prefer quickTambah/quickKurangi if provided, otherwise use edit_jumlah as manual set
+============================= */
+async function saveEdit(){
+  if (!editId) return;
+
+  const namaVal = el('edit_nama').value.trim();
+  const modalVal = parseInt(el('edit_modal').value || 0);
+  const hargaVal = parseInt(el('edit_harga').value || 0);
+  const manualJumlah = parseInt(el('edit_jumlah').value || 0);
+  const quickTambah = parseInt(el('quickTambah').value || 0);
+  const quickKurangi = parseInt(el('quickKurangi').value || 0);
+
+  show('spinEdit');
+
+  // fetch fresh before
+  const { data: oldRow } = await db.from('stok_barang').select('*').eq('id', editId).maybeSingle();
+  const before = oldRow ? (oldRow.jumlah ?? 0) : jumlahAwal;
+
+  // compute new jumlah: quick operations take precedence if any >0, else manual set
+  let newJumlah = before;
+  if (quickTambah > 0 || quickKurangi > 0) {
+    newJumlah = before + (isNaN(quickTambah) ? 0 : quickTambah) - (isNaN(quickKurangi) ? 0 : quickKurangi);
+  } else {
+    newJumlah = manualJumlah;
+  }
+  if (newJumlah < 0) newJumlah = 0;
+
+  // update row
+  await db.from('stok_barang').update({
+    nama: namaVal,
+    modal: modalVal,
+    harga_jual: hargaVal,
+    jumlah: newJumlah
+  }).eq('id', editId);
+
+  // log
+  await db.from('stok_log').insert([{
+    barang_id: editId,
+    nama: namaVal,
+    aksi: 'edit',
+    jumlah_awal: before,
+    jumlah_akhir: newJumlah,
+    tanggal: new Date().toISOString()
+  }]);
+
+  hide('spinEdit');
+  closeEdit();
+  await loadStok();
+}
+
+/* =============================
+   HAPUS STOK
+============================= */
+async function hapusStok(){
+  if (!editId) return;
+
+  show('spinEdit');
+
+  // fetch current for log
+  const { data: cur } = await db.from('stok_barang').select('*').eq('id', editId).maybeSingle();
+  const before = cur ? (cur.jumlah ?? 0) : 0;
+  const name = cur ? (cur.nama ?? null) : null;
+
+  // delete
+  await db.from('stok_barang').delete().eq('id', editId);
+
+  // log delete
+  await db.from('stok_log').insert([{
+    barang_id: editId,
+    nama: name,
+    aksi: 'hapus',
+    jumlah_awal: before,
+    jumlah_akhir: 0,
+    tanggal: new Date().toISOString()
+  }]);
+
+  hide('spinEdit');
+  closeEdit();
+  await loadStok();
+}
+
+/* close modal when click backdrop */
+document.getElementById('modalEditBackdrop').addEventListener('click', function(e){
+  if (e.target === this) closeEdit();
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Admin POS Kasir</title>
+
+<!-- ===============================
+     CSS PATOKAN (HIJAU MUDA)
+=============================== -->
+<style>
+:root{
+  --primary:#37c978;
+  --primary-dark:#2ba764;
+  --bg:#eefef4;
+  --text:#0d1b2a;
+  --radius:16px;
+  --shadow:0 4px 12px rgba(0,0,0,0.12);
+}
+
+body{
+  margin:0;
+  padding:0;
+  background:var(--bg);
+  color:var(--text);
+  font-family:Arial, sans-serif;
+}
+
+.container{
+  width:100%;
+  max-width:480px;
+  margin:auto;
+  padding:20px;
+}
+
+/* HEADER */
+h1{
+  text-align:center;
+  margin-top:10px;
+  margin-bottom:25px;
+}
+
+/* FORM */
+.input-box{
+  display:flex;
+  flex-direction:column;
+  margin-bottom:18px;
+}
+
+.input-box label{
+  margin-bottom:6px;
+  font-size:14px;
+}
+
+.input-box input{
+  padding:12px;
+  border-radius:var(--radius);
+  border:1px solid #ccc;
+  font-size:15px;
+}
+
+.btn{
+  width:100%;
+  padding:14px 0;
+  background:var(--primary);
+  color:white;
+  font-size:17px;
+  border:none;
+  border-radius:var(--radius);
+  box-shadow:var(--shadow);
+  cursor:pointer;
+  transition:0.2s;
+  margin-top:10px;
+}
+
+.btn:hover{
+  background:var(--primary-dark);
+}
+
+.btn:active{
+  background:var(--primary-dark);
+  transform:scale(0.97);
+}
+
+/* GRID MENU */
+.grid-menu{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:20px;
+  margin-top:25px;
+}
+
+.grid-btn:hover{
+  background:var(--primary-dark);
+} 
+
+.grid-btn{
+  padding:20px 0;
+  background:var(--primary);
+  color:#fff;
+  border:none;
+  border-radius:var(--radius);
+  font-size:18px;
+  box-shadow:var(--shadow);
+}
+
+/* TABEL ADMIN */
+table{
+  width:100%;
+  border-collapse:collapse;
+  margin-top:20px;
+  background:white;
+  border-radius:var(--radius);
+  overflow:hidden;
+  box-shadow:var(--shadow);
+}
+
+th, td{
+  padding:12px;
+  border-bottom:1px solid #eee;
+  font-size:14px;
+}
+
+th{
+  background:#d9ffe9;
+}
+
+.delete-btn{
+  padding:6px 10px;
+  background:#ff4d4d;
+  border:none;
+  color:white;
+  border-radius:10px;
+  cursor:pointer;
+}
+
+/* MODAL LOGIN */
+.modal{
+  position:fixed;
+  top:0; left:0;
+  width:100%; height:100%;
+  background:rgba(0,0,0,0.4);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.modal-box{
+  width:90%;
+  max-width:380px;
+  background:white;
+  padding:25px;
+  border-radius:var(--radius);
+  box-shadow:var(--shadow);
+  text-align:center;
+}
+
+/* SPINNER */
+#loadingSpinner{
+  display:none;
+  text-align:center;
+  margin-top:20px;
+}
+.spinner{
+  width:40px;
+  height:40px;
+  border:4px solid #ddd;
+  border-top-color:var(--primary);
+  border-radius:50%;
+  animation:spin 0.9s linear infinite;
+}
+@keyframes spin{
+  to{ transform:rotate(360deg); }
+}
+
+/* RESPONSIVE */
+@media (max-width:480px){
+  h1{ font-size:22px; }
+  .grid-btn{ font-size:16px; padding:16px 0; }
+}
+</style>
+</head>
+<body>
+
+<!-- ======================================
+     MODAL LOGIN (WAJIB LOGIN)
+====================================== -->
+<div id="loginModal" class="modal">
+  <div class="modal-box">
+    <h2>Login Admin</h2>
+
+    <div class="input-box">
+      <label>Username</label>
+      <input type="text" id="loginUser" placeholder="Masukkan username">
+    </div>
+
+    <div class="input-box">
+      <label>Password</label>
+      <input type="password" id="loginPass" placeholder="Masukkan password">
+    </div>
+
+    <button class="btn" onclick="loginAdmin()">Login</button>
+
+    <div id="loginError" style="color:red; margin-top:10px; display:none;">
+      Username / password salah!
+    </div>
+
+    <div id="loadingSpinnerLogin" style="display:none; margin-top:15px;">
+      <div class="spinner"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ======================================
+     KONTEN ADMIN (SETELAH LOGIN)
+====================================== -->
+<div class="container" id="adminContent" style="display:none;">
+
+  <h1>Halaman Admin</h1>
+  <a href="index.html"><button class="btn">kembali ke halaman awal</button></a><br><br><br>
+  <!-- Ubah nama toko -->
+  <div class="input-box">
+    <label>Nama Toko</label>
+    <input type="text" id="namaToko">
+  </div>
+  <button class="btn" onclick="simpanNamaToko()">Simpan Nama Toko</button>
+
+  <!-- Tambah akun admin -->
+  <h2 style="margin-top:30px;">Tambah Akun Admin</h2>
+
+  <div class="input-box">
+    <label>Username</label>
+    <input type="text" id="newUsername">
+  </div>
+
+  <div class="input-box">
+    <label>Password</label>
+    <input type="text" id="newPassword">
+  </div>
+
+  <button class="btn" onclick="tambahAkun()">Tambah Admin</button>
+
+
+  <!-- Tabel akun admin -->
+  <h2 style="margin-top:30px;">Daftar Akun Admin</h2>
+  <div id="adminTableWrap"></div>
+
+  <!-- GRID MENU -->
+  <div class="grid-menu">
+    <button class="grid-btn" onclick="goStok()">Stok</button>
+    <button class="grid-btn" onclick="goLaporan()">Laporan Penjualan</button>
+  </div>
+
+  <div id="loadingSpinner">
+    <div class="spinner"></div>
+  </div>
+
+</div>
+
+<!-- ======================================
+     SUPABASE
+====================================== -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = "https://mcqjsoadadjrjwwqfzjh.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable___GKiTfqGSEgxJ4-MZtfow_MnkSZUu5";
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+/* ===========================
+   LOGIN ADMIN
+===========================*/
+async function loginAdmin(){
+  const user = loginUser.value.trim();
+  const pass = loginPass.value.trim();
+
+  if(user === "" || pass === "") return;
+
+  loginError.style.display = "none";
+  loadingSpinnerLogin.style.display = "block";
+
+  const { data, error } = await db
+    .from("admin_users")
+    .select("username, password")
+    .eq("username", user)
+    .eq("password", pass)
+    .maybeSingle();
+
+  loadingSpinnerLogin.style.display = "none";
+
+  if(!data){
+    loginError.style.display = "block";
+    return;
+  }
+
+  loginModal.style.display = "none";
+  adminContent.style.display = "block";
+  loadNamaToko();
+  loadAkunAdmin();
+}
+
+/* ===========================
+   LOAD NAMA TOKO
+===========================*/
+async function loadNamaToko(){
+  const { data, error } = await db
+    .from("toko_info")
+    .select("nama_toko")
+    .limit(1)
+    .maybeSingle();
+
+  if(data){
+    namaToko.value = data.nama_toko;
+  }
+}
+
+/* ===========================
+   SIMPAN NAMA TOKO
+===========================*/
+async function simpanNamaToko(){
+  loadingSpinner.style.display = "block";
+
+  await db
+    .from("toko_info")
+    .update({ nama_toko: namaToko.value })
+    .eq("id", 1);
+
+  loadingSpinner.style.display = "none";
+}
+
+/* ===========================
+   TAMBAH AKUN ADMIN
+===========================*/
+async function tambahAkun(){
+  loadingSpinner.style.display = "block";
+
+  await db.from("admin_users").insert({
+    username: newUsername.value,
+    password: newPassword.value
+  });
+
+  newUsername.value = "";
+  newPassword.value = "";
+
+  loadAkunAdmin();
+  loadingSpinner.style.display = "none";
+}
+
+/* ===========================
+   LOAD TABEL ADMIN
+===========================*/
+async function loadAkunAdmin(){
+  const { data } = await db.from("admin_users").select("*");
+
+  let html = `
+    <table>
+      <tr>
+        <th>Username</th>
+        <th>Password</th>
+        <th>Aksi</th>
+      </tr>
+  `;
+
+  data.forEach(a=>{
+    html += `
+      <tr>
+        <td>${a.username}</td>
+        <td>${a.password}</td>
+        <td><button class="delete-btn" onclick="hapusAkun(${a.id})">Hapus</button></td>
+      </tr>
+    `;
+  });
+
+  html += `</table>`;
+
+  adminTableWrap.innerHTML = html;
+}
+
+/* ===========================
+   HAPUS AKUN
+===========================*/
+async function hapusAkun(id){
+  loadingSpinner.style.display = "block";
+  await db.from("admin_users").delete().eq("id", id);
+  loadAkunAdmin();
+  loadingSpinner.style.display = "none";
+}
+
+/* ===========================
+   NAVIGASI
+===========================*/
+function goStok(){ window.location.href = "stok.html"; }
+function goLaporan(){ window.location.href = "laporan.html"; }
+
+</script>
+
+</body>
+</html>
