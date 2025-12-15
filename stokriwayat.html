@@ -1,167 +1,265 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-<title>Stok & Riwayat Perubahan</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Log Stok</title>
 
-<!-- Supabase JS -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
 :root{
-  --bg:#48d487;
-  --card:#ffffff;
-  --text:#0f0f0f;
-  --muted:#080808;
-  --primary:#48d487;
-  --primary-700:#2fa76a;
-  --radius:12px;
-  --shadow:0 8px 24px rgba(13, 14, 13, 0.06);
-  --font:Arial, sans-serif;
+  --green:#4fd1a5;
+  --green-dark:#2fb389;
+  --green-soft:#e9f8f2;
+  --bg:#f4fbf8;
+  --text:#134e3a;
+  --white:#ffffff;
+  --border:#d1fae5;
 }
 *{box-sizing:border-box}
-html,body{margin:0;padding:0;background:var(--bg);font-family:var(--font);color:var(--text)}
-.container{max-width:900px;margin:20px auto;padding:16px}
-
-/* header */
-h1{margin:0 0 16px 0;text-align:center}
-.search-box{margin:12px 0}
-.search-box input{
+body{
+  margin:0;
+  font-family:system-ui, Arial, sans-serif;
+  background:var(--bg);
+  color:var(--text);
+}
+header{
+  background:var(--green);
+  color:white;
+  padding:14px 16px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+header h2{margin:0;font-size:18px}
+button{
+  background:white;
+  color:var(--green-dark);
+  border:1px solid var(--green-dark);
+  padding:8px 14px;
+  border-radius:8px;
+  cursor:pointer;
+}
+.container{
+  padding:16px;
+  max-width:1200px;
+  margin:auto;
+}
+.search{
+  margin-bottom:16px;
+}
+.search input{
   width:100%;
-  padding:10px;
-  border-radius:var(--radius);
-  border:1px solid #ccc;
+  padding:10px 12px;
+  border-radius:10px;
+  border:1px solid var(--border);
+}
+.card{
+  background:var(--white);
+  border-radius:12px;
+  margin-bottom:24px;
+  overflow:auto;
+}
+.card h3{
+  margin:0;
+  padding:14px;
+  background:var(--green-soft);
   font-size:15px;
 }
-.btn1{
-  background:var(--card);
-  color:#1a1919;
-  border:0;
-  padding:8px 10px;
-  border-radius:var(--radius);
-  cursor:pointer;
-  border-radius: 15px;
+table{
+  width:100%;
+  border-collapse:collapse;
 }
-.btn1:hover{
-  background:var(--primary);
-  color:var(--card);
+th,td{
+  padding:10px;
+  border-bottom:1px solid #eee;
+  font-size:14px;
+  vertical-align:top;
 }
-/* card */
-.card{background:var(--card);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);margin-bottom:20px;overflow-x:auto}
-
-/* table */
-table{width:100%;border-collapse:collapse;font-size:0.95rem}
-th,td{padding:10px;border-bottom:1px solid var(--muted);text-align:left}
-th{background:var(--primary);color:var(--muted);font-weight:700}
-
-.spinner{width:36px;height:36px;border-radius:50%;border:4px solid #ddd;border-top-color:var(--primary);animation:spin .9s linear infinite;display:none;margin:auto}
+th{
+  background:var(--green-soft);
+  text-align:left;
+}
+.empty{
+  text-align:center;
+  padding:16px;
+  opacity:.6;
+}
+.spinner{
+  position:fixed;
+  inset:0;
+  background:rgba(255,255,255,.7);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  z-index:99;
+}
+.spinner div{
+  width:42px;
+  height:42px;
+  border:5px solid var(--green-soft);
+  border-top:5px solid var(--green-dark);
+  border-radius:50%;
+  animation:spin 1s linear infinite;
+}
 @keyframes spin{to{transform:rotate(360deg)}}
-
-.kecil{font-size:0.85rem;color:var(--muted)}
-.center{text-align:center}
+.badge{
+  padding:3px 8px;
+  border-radius:999px;
+  font-size:12px;
+  background:var(--green-soft);
+  display:inline-block;
+}
+@media(max-width:768px){
+  th,td{font-size:13px}
+}
 </style>
 </head>
 <body>
 
+<header>
+  <h2>Log & Riwayat Stok</h2>
+  <button onclick="location.href='index.html'">Kembali</button>
+</header>
+
 <div class="container">
-  <h1>Daftar Stok & Riwayat Perubahan</h1>
 
-  <!-- live search -->
-   <a href="index.html"><button class="btn1">Kembali</button></a>
-  <div class="search-box">
-    <input type="text" id="searchInput" placeholder="Cari nama barang...">
-  </div>
-
-  <!-- Tabel Stok -->
-  <div class="card">
-    <h3>Stok Barang</h3>
-    <div id="spinStok" class="spinner"></div>
-    <table id="tblStok">
-      <thead><tr><th>Nama Barang</th><th>Harga Jual (Rp)</th><th>Sisa Stok</th></tr></thead>
-      <tbody></tbody>
-    </table>
-  </div>
-
-  <!-- Tabel Riwayat -->
-  <div class="card">
-    <h3>Riwayat Perubahan Stok</h3>
-    <div id="spinLog" class="spinner"></div>
-    <table id="tblLog">
-      <thead><tr><th>Nama Barang</th><th>Aksi</th><th>Jumlah Awal</th><th>Jumlah Akhir</th><th>Tanggal</th></tr></thead>
-      <tbody></tbody>
-    </table>
-  </div>
+<div class="search">
+  <input type="text" id="search" placeholder="Cari barang atau aksi...">
 </div>
 
+<div class="card">
+<h3>Stok Aktif</h3>
+<table id="stokTable">
+<thead>
+<tr>
+  <th>Nama Barang</th>
+  <th>Harga Jual</th>
+  <th>Jumlah</th>
+</tr>
+</thead>
+<tbody></tbody>
+</table>
+</div>
+
+<div class="card">
+<h3>Riwayat Perubahan Stok</h3>
+<table id="logTable">
+<thead>
+<tr>
+  <th>Tanggal</th>
+  <th>Aksi</th>
+  <th>Barang</th>
+  <th>Detail Perubahan</th>
+</tr>
+</thead>
+<tbody></tbody>
+</table>
+</div>
+
+</div>
+
+<div class="spinner" id="spinner"><div></div></div>
+
 <script>
-// Supabase init
-const SUPABASE_URL = "https://mcqjsoadadjrjwwqfzjh.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable___GKiTfqGSEgxJ4-MZtfow_MnkSZUu5";
+const SUPABASE_URL = "https://fgoeqtyaxwccxluxdvni.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_ZXJgBsB-sswr7qblwGMnLg_p6QaXKwP";
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// load stok & log
-async function loadStokLog(){
-  // load stok
-  showSpinner('spinStok');
-  const { data: stok, error: errS } = await db.from('stok_barang').select('id,nama,jumlah,harga_jual');
-  hideSpinner('spinStok');
+const spinner = document.getElementById('spinner');
+const stokBody = document.querySelector('#stokTable tbody');
+const logBody  = document.querySelector('#logTable tbody');
+const search   = document.getElementById('search');
 
-  const tbodyStok = document.querySelector('#tblStok tbody');
-  tbodyStok.innerHTML = '';
-  if (stok && stok.length > 0){
-    stok.forEach(b => {
-      tbodyStok.innerHTML += `
-        <tr>
-          <td>${b.nama}</td>
-          <td>Rp ${Number(b.harga_jual).toLocaleString('id')}</td>
-          <td>${b.jumlah}</td>
-        </tr>`;
-    });
-  } else {
-    tbodyStok.innerHTML = '<tr><td colspan="3" class="center kecil">Tidak ada data stok</td></tr>';
-  }
+let stokData = [];
+let logData  = [];
 
-  // load log
-  showSpinner('spinLog');
-  const { data: log, error: errL } = await db.from('stok_log').select('nama,aksi,jumlah_awal,jumlah_akhir,tanggal').order('tanggal', { ascending: false });
-  hideSpinner('spinLog');
+function spin(v){ spinner.style.display = v ? 'flex' : 'none'; }
 
-  const tbodyLog = document.querySelector('#tblLog tbody');
-  tbodyLog.innerHTML = '';
-  if (log && log.length > 0){
-    log.forEach(r => {
-      tbodyLog.innerHTML += `
-        <tr>
-          <td>${r.nama}</td>
-          <td>${r.aksi}</td>
-          <td>${r.jumlah_awal}</td>
-          <td>${r.jumlah_akhir}</td>
-          <td>${new Date(r.tanggal).toLocaleString()}</td>
-        </tr>`;
-    });
-  } else {
-    tbodyLog.innerHTML = '<tr><td colspan="5" class="center kecil">Belum ada riwayat</td></tr>';
-  }
+async function loadAll(){
+  spin(true);
+
+  const { data: stok } = await db
+    .from('stok')
+    .select('id,nama_barang,jumlah,harga_jual')
+    .eq('aktif', true)
+    .order('nama_barang');
+
+  const { data: log } = await db
+    .from('log_stok')
+    .select('*')
+    .order('tgl', { ascending:false });
+
+  stokData = stok || [];
+  logData  = log  || [];
+
+  renderStok(stokData);
+  renderLog(logData);
+
+  spin(false);
 }
 
-// spinner control
-function showSpinner(id){ document.getElementById(id).style.display = 'block'; }
-function hideSpinner(id){ document.getElementById(id).style.display = 'none'; }
-
-// live search
-document.getElementById('searchInput').addEventListener('input', function(){
-  const v = this.value.trim().toLowerCase();
-  const rows = document.querySelectorAll('#tblStok tbody tr');
-  rows.forEach(r => {
-    const nama = r.children[0].textContent.trim().toLowerCase();
-    if (nama.includes(v)) r.style.display = '';
-    else r.style.display = 'none';
+function renderStok(data){
+  stokBody.innerHTML = '';
+  if(!data.length){
+    stokBody.innerHTML = `<tr><td colspan="3" class="empty">Tidak ada data stok</td></tr>`;
+    return;
+  }
+  data.forEach(s=>{
+    stokBody.innerHTML += `
+      <tr>
+        <td>${s.nama_barang}</td>
+        <td>${s.harga_jual ?? '-'}</td>
+        <td>${s.jumlah}</td>
+      </tr>`;
   });
+}
+
+function renderLog(data){
+  logBody.innerHTML = '';
+  if(!data.length){
+    logBody.innerHTML = `<tr><td colspan="4" class="empty">Belum ada riwayat stok</td></tr>`;
+    return;
+  }
+  data.forEach(l=>{
+    let detail = '';
+
+    if(l.jumlah_sebelum != null){
+      detail += `Qty: ${l.jumlah_sebelum} → ${l.jumlah_sesudah}<br>`;
+    }
+    if(l.harga_beli_sebelum != null){
+      detail += `Harga Beli: ${l.harga_beli_sebelum} → ${l.harga_beli_sesudah}<br>`;
+    }
+    if(l.harga_jual_sebelum != null){
+      detail += `Harga Jual: ${l.harga_jual_sebelum} → ${l.harga_jual_sesudah}<br>`;
+    }
+    if(l.nama_lama){
+      detail += `Nama: ${l.nama_lama} → ${l.nama_barang}<br>`;
+    }
+    if(!detail) detail = l.keterangan || '-';
+
+    logBody.innerHTML += `
+      <tr>
+        <td>${new Date(l.tgl).toLocaleString()}</td>
+        <td><span class="badge">${l.aksi || '-'}</span></td>
+        <td>${l.nama_barang || '-'}</td>
+        <td>${detail}</td>
+      </tr>`;
+  });
+}
+
+search.addEventListener('input', ()=>{
+  const q = search.value.toLowerCase();
+  renderStok(stokData.filter(s=>s.nama_barang.toLowerCase().includes(q)));
+  renderLog(logData.filter(l=>
+    (l.nama_barang||'').toLowerCase().includes(q) ||
+    (l.aksi||'').toLowerCase().includes(q)
+  ));
 });
 
-// initial load
-loadStokLog();
+loadAll();
 </script>
+
 </body>
 </html>
