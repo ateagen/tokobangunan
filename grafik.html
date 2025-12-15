@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Grafik Penjualan</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+:root{
+  --green:#1fbf75;
+  --green-dark:#159c5f;
+  --bg:#e0f7ff;
+  --text:#1f2937;
+}
+body{margin:0;font-family:Arial,sans-serif;background:var(--bg);color:var(--text);}
+header{
+  background:var(--green);
+  color:white;
+  padding:16px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+.chart-container{
+  background:white;
+  padding:20px;
+  border-radius:12px;
+  margin-bottom:24px;
+  box-shadow:0 4px 12px rgba(0,0,0,.1);
+  width:70%;   /* Hanya 50% layar */
+  margin-left:auto;
+  margin-right:auto;
+}
+
+
+
+button{
+  border:none;
+  padding:8px 14px;
+  border-radius:6px;
+  cursor:pointer;
+  background:white;
+  color:var(--green-dark);
+  font-weight:bold;
+}
+button:hover{opacity:.8;}
+.container{padding:16px;}
+.filters{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;align-items:center;}
+input[type=date]{padding:6px;border-radius:6px;border:1px solid #ccc;}
+.chart-container{background:white;padding:20px;border-radius:12px;margin-bottom:24px;box-shadow:0 4px 12px rgba(0,0,0,.1);}
+.spinner{
+  position:fixed;inset:0;display:none;
+  align-items:center;justify-content:center;
+  background:rgba(255,255,255,.7);z-index:99;
+}
+.spinner div{
+  width:40px;height:40px;border:5px solid #d1fae5;
+  border-top:5px solid var(--green);
+  border-radius:50%;animation:spin 1s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<header>
+  <h2>Grafik Penjualan</h2>
+  <button onclick="location.href='index.html'">⬅ Kembali</button>
+</header>
+
+<div class="container">
+  <div class="filters">
+    <label>Dari: <input type="date" id="from"></label>
+    <label>Ke: <input type="date" id="to"></label>
+    <button onclick="loadData()">Filter</button>
+  </div>
+
+  <div class="chart-container">
+    <h3>Penjualan & Pengeluaran (Line Chart)</h3>
+    <canvas id="lineChart" height="150"></canvas>
+  </div>
+
+  <div class="chart-container">
+    <h3>Barang Terlaris (Donut Chart)</h3>
+    <canvas id="donutChart" height="150"></canvas>
+  </div>
+</div>
+
+<div class="spinner" id="spinner"><div></div></div>
+
+<script>
+const SUPABASE_URL="https://fgoeqtyaxwccxluxdvni.supabase.co";
+const SUPABASE_ANON_KEY="sb_publishable_ZXJgBsB-sswr7qblwGMnLg_p6QaXKwP";
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const spinner = document.getElementById('spinner');
+function showSpinner(v){spinner.style.display=v?'flex':'none';}
+
+(function setDefaultDates(){
+  const d=new Date();
+  const to = d.toISOString().split('T')[0];
+  d.setDate(d.getDate()-30);
+  const from = d.toISOString().split('T')[0];
+  document.getElementById('from').value = from;
+  document.getElementById('to').value = to;
+})();
+
+let lineChart, donutChart;
+
+function tsStart(d){ return d+"T00:00:00"; }
+function tsEnd(d){ return d+"T23:59:59"; }
+
+async function loadData(){
+  showSpinner(true);
+  const f = document.getElementById('from').value;
+  const t = document.getElementById('to').value;
+
+  // Penjualan
+  const { data: jual } = await db.from('penjualan')
+    .select('*')
+    .gte('tgl', tsStart(f))
+    .lte('tgl', tsEnd(t));
+
+  // Pengeluaran
+  const { data: keluar } = await db.from('pengeluaran')
+    .select('*')
+    .gte('tgl', tsStart(f))
+    .lte('tgl', tsEnd(t));
+
+  // Barang terjual
+  const mapBarang = {};
+  jual.forEach(r => {
+    mapBarang[r.nama_barang] = (mapBarang[r.nama_barang] || 0) + Number(r.jumlah);
+  });
+
+  // Aggregate per tanggal
+  const mapTanggal = {};
+  const labels = [];
+  const dataJual = [];
+  const dataKeluar = [];
+
+  const start = new Date(f);
+  const end = new Date(t);
+  for(let d = new Date(start); d<=end; d.setDate(d.getDate()+1)){
+    const key = d.toISOString().split('T')[0];
+    labels.push(key);
+    mapTanggal[key] = {jual:0, keluar:0};
+  }
+
+  jual.forEach(r => {
+    const d = r.tgl.split('T')[0];
+    if(mapTanggal[d]) mapTanggal[d].jual += Number(r.total);
+  });
+  keluar.forEach(r => {
+    const d = r.tgl.split('T')[0];
+    if(mapTanggal[d]) mapTanggal[d].keluar += Number(r.jumlah);
+  });
+
+  labels.forEach(l => {
+    dataJual.push(mapTanggal[l].jual);
+    dataKeluar.push(mapTanggal[l].keluar);
+  });
+
+  // Line Chart
+  if(lineChart) lineChart.destroy();
+  const ctxLine = document.getElementById('lineChart').getContext('2d');
+  lineChart = new Chart(ctxLine,{
+    type:'line',
+    data:{
+      labels:labels,
+      datasets:[
+        {label:'Penjualan',data:dataJual,borderColor:'green',fill:false,tension:0.3},
+        {label:'Pengeluaran',data:dataKeluar,borderColor:'red',fill:false,tension:0.3}
+      ]
+    },
+    options:{responsive:true,plugins:{legend:{position:'top'}}}
+  });
+
+  // Donut Chart
+  const barangLabels = Object.keys(mapBarang);
+  const barangData = Object.values(mapBarang);
+  if(donutChart) donutChart.destroy();
+  const ctxDonut = document.getElementById('donutChart').getContext('2d');
+  donutChart = new Chart(ctxDonut,{
+    type:'doughnut',
+    data:{
+      labels:barangLabels,
+      datasets:[{data:barangData, backgroundColor:barangLabels.map(()=>`hsl(${Math.random()*360},70%,60%)`)}]
+    },
+    options:{responsive:true,plugins:{legend:{position:'right'}}}
+  });
+
+  showSpinner(false);
+}
+
+loadData();
+</script>
+
+</body>
+</html>
