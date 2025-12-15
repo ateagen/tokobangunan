@@ -2,176 +2,274 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
-<title>POS Kasir - Index</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>POS Kasir</title>
 
-<!-- ======================================
-     CSS PATOKAN DESAIN
-====================================== -->
+<!-- ===================== CSS PATOKAN ===================== -->
 <style>
-:root {
-  --bg: #f5f9ff;
-  --primary: #48d487;
-  --primary-dark: #2fa76a;
-  --text: #0d1b2a;
-  --radius: 16px;
-  --shadow: 0 4px 10px rgba(0,0,0,0.1);
+:root{
+  --green:#1fbf75;
+  --green-dark:#159c5f;
+  --green-soft:#e9f8f1;
+  --bg:#31c77c;
+  --text:#1f2937;
+  --white:#ffffff;
+  --shadow:0 10px 25px rgba(0,0,0,.08);
 }
 
-body {
-  margin: 0;
-  padding: 0;
-  font-family: Arial, sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  min-height: 100vh;
+*{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,-apple-system,BlinkMacSystemFont}
+
+body{
+  background:var(--bg);
+  color:var(--text);
+  min-height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
 }
 
-.container {
-  width: 100%;
-  max-width: 420px;
-  padding: 20px;
-  text-align: center;
+.container{
+  width:100%;
+  max-width:1100px;
+  padding:24px;
 }
 
-h1 {
-  font-size: 26px;
-  font-weight: bold;
-  margin-top: 30px;
-  margin-bottom: 10px;
+.header{
+  background:var(--white);
+  padding:28px;
+  border-radius:18px;
+  box-shadow:var(--shadow);
+  margin-bottom:24px;
+  text-align:center;
 }
 
-.subtitle {
-  font-size: 15px;
-  margin-bottom: 35px;
-  opacity: 0.8;
+.header h1{
+  font-size:28px;
+  margin-bottom:6px;
+  color:var(--green-dark);
 }
 
-/* GRID BUTTON */
-.menu-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 18px;
+.header p{
+  font-size:15px;
+  opacity:.8;
 }
 
-.menu-btn {
-  background: var(--primary);
-  border: none;
-  padding: 22px 0;
-  color: white;
-  font-size: 18px;
-  font-weight: bold;
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  cursor: pointer;
-  transition: 0.2s;
+.grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+  gap:18px;
 }
 
-.menu-btn:active {
-  background: var(--primary-dark);
-  transform: scale(0.96);
+.card{
+  background:var(--white);
+  border-radius:18px;
+  padding:26px;
+  box-shadow:var(--shadow);
+  cursor:pointer;
+  transition:.25s ease;
+  text-align:center;
 }
 
-/* SPINNER LOADING */
-#loadingSpinner {
-  display: none;
-  margin-top: 20px;
-}
-.spinner {
-  width: 38px;
-  height: 38px;
-  border: 4px solid #ddd;
-  border-top-color: var(--primary);
-  border-radius: 50%;
-  animation: spin 0.9s linear infinite;
-}
-@keyframes spin {
-  to { transform: rotate(360deg); }
+.card:hover{
+  transform:translateY(-6px);
+  box-shadow:0 15px 30px rgba(0,0,0,.12);
 }
 
-/* RESPONSIVE */
-@media (max-width: 480px) {
-  h1 { font-size: 22px; }
-  .menu-btn { font-size: 16px; padding: 18px 0; }
+.card .icon{
+  font-size:38px;
+  margin-bottom:14px;
+}
+
+.card h3{
+  font-size:18px;
+  margin-bottom:6px;
+}
+
+.card span{
+  font-size:13px;
+  opacity:.7;
+}
+
+/* ===================== MODAL ===================== */
+.modal{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.45);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  z-index:99;
+}
+
+.modal-box{
+  background:var(--white);
+  padding:24px;
+  border-radius:16px;
+  width:90%;
+  max-width:420px;
+  text-align:center;
+  box-shadow:var(--shadow);
+}
+
+.modal-box h4{
+  margin-bottom:10px;
+}
+
+.modal-box button{
+  margin-top:16px;
+  padding:10px 20px;
+  border:none;
+  border-radius:10px;
+  background:var(--green);
+  color:var(--white);
+  cursor:pointer;
+}
+
+.modal-box button:hover{
+  background:var(--green-dark);
+}
+
+/* ===================== LOADING SPINNER ===================== */
+.loading{
+  position:fixed;
+  inset:0;
+  background:rgba(255,255,255,.7);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  z-index:100;
+}
+
+.spinner{
+  width:50px;
+  height:50px;
+  border:6px solid #d1fae5;
+  border-top:6px solid var(--green);
+  border-radius:50%;
+  animation:spin 1s linear infinite;
+}
+
+@keyframes spin{
+  to{transform:rotate(360deg)}
+}
+
+/* ===================== RESPONSIVE ===================== */
+@media(max-width:600px){
+  .header h1{font-size:22px}
+  .card{padding:22px}
 }
 </style>
 </head>
 
 <body>
-<div class="container">
 
-  <h1 id="welcomeTitle">Selamat Datang di POS Kasir</h1>
-  <div class="subtitle" id="storeName">Memuat nama toko...</div>
-
-  <!-- MENU GRID -->
-  <div class="menu-grid">
-    <button class="menu-btn" onclick="goKasir()">Kasir</button>
-    <button class="menu-btn" onclick="goAdmin()">Admin</button>
-    <button class="menu-btn" onclick="goStokRiwayat()">Stok Dan Riwayat perubahan stok</button>
-  </div>
-
-  <!-- SPINNER -->
-  <div id="loadingSpinner">
-    <div class="spinner"></div>
-  </div>
-
+<div class="loading" id="loading">
+  <div class="spinner"></div>
 </div>
 
-<!-- ======================================
-     SUPABASE SETUP
-====================================== -->
+<div class="modal" id="modal">
+  <div class="modal-box">
+    <h4 id="modalTitle">Info</h4>
+    <p id="modalMsg"></p>
+    <button onclick="closeModal()">Tutup</button>
+  </div>
+</div>
+
+<div class="container">
+  <div class="header">
+    <h1 id="namaToko">POS Kasir</h1>
+    <p id="welcomeText">Selamat datang di POS Kasir</p>
+  </div>
+
+  <div class="grid">
+    <div class="card" onclick="window.location.href='kasir.html'">
+      <div class="icon">🧾</div>
+      <h3>Kasir</h3>
+      <span>Transaksi penjualan</span>
+    </div>
+  
+    <div class="card" onclick="window.location.href='admin.html'">
+      <div class="icon">🔐</div>
+      <h3>Admin</h3>
+      <span>Pengaturan sistem</span>
+    </div>
+
+    <div class="card" onclick="window.location.href='stokriwayat.html'">
+      <div class="icon">📦</div>
+      <h3>Stok & Log</h3>
+      <span>Kelola stok barang</span>
+    </div>
+
+    <div class="card" onclick="window.location.href='grafik.html'">
+      <div class="icon">📊</div>
+      <h3>Grafik Penjualan</h3>
+      <span>Laporan visual</span>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== SUPABASE ===================== -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-const SUPABASE_URL = "https://mcqjsoadadjrjwwqfzjh.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable___GKiTfqGSEgxJ4-MZtfow_MnkSZUu5";
-const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const SUPABASE_URL = "https://fgoeqtyaxwccxluxdvni.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_ZXJgBsB-sswr7qblwGMnLg_p6QaXKwP";
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-/* ===============================
-   LOAD NAMA TOKO OTOMATIS
-===============================*/
-async function loadStoreName() {
-    const title = document.getElementById("storeName");
-    const loading = document.getElementById("loadingSpinner");
+const loading = document.getElementById('loading');
+const modal = document.getElementById('modal');
+const modalMsg = document.getElementById('modalMsg');
+const modalTitle = document.getElementById('modalTitle');
 
-    loading.style.display = "block";
+function showLoading(show=true){
+  loading.style.display = show ? 'flex' : 'none';
+}
 
-    const { data, error } = await db
-        .from("toko_info")
-        .select("nama_toko")
-        .limit(1)
-        .maybeSingle();
+function showModal(title,msg){
+  modalTitle.textContent = title;
+  modalMsg.textContent = msg;
+  modal.style.display = 'flex';
+}
 
-    loading.style.display = "none";
+function closeModal(){
+  modal.style.display = 'none';
+}
 
-    if (error) {
-        title.textContent = "Gagal memuat nama toko";
-        return;
+/* ===================== AMBIL NAMA TOKO DARI SQL ===================== */
+async function loadNamaToko(){
+  showLoading(true);
+  try {
+    const { data, error } = await supabaseClient
+      .from('toko')       // Sesuai SQL kita
+      .select('nama')     // Kolom nama toko
+      .limit(1)
+      .single();
+
+    showLoading(false);
+
+    if(error || !data){
+      showModal('Gagal', 'Nama toko tidak dapat dimuat');
+      return;
     }
 
-    if (!data) {
-        title.textContent = "Nama toko belum diatur";
-    } else {
-        title.textContent = data.nama_toko;
-    }
+    document.getElementById('namaToko').textContent =
+      'POS Kasir - ' + data.nama;
+
+    document.getElementById('welcomeText').textContent =
+      'Selamat datang di POS Kasir ' + data.nama;
+
+  } catch(err){
+    showLoading(false);
+    console.error(err);
+    showModal('Error', 'Terjadi kesalahan saat memuat data');
+  }
 }
 
-loadStoreName();
+/* ===================== NAVIGASI (PLACEHOLDER) ===================== */
+function openPage(page){
+  showModal('Info', 'Menu "' + page + '" belum dibuat');
+}
 
-/* ===============================
-   NAVIGASI
-===============================*/
-function goKasir(){
-    window.location.href = "kasir.html";
-}
-function goAdmin(){
-    window.location.href = "admin.html";
-}
-function goStokRiwayat(){
-    window.location.href = "stokriwayat.html";
-}
+loadNamaToko();
 </script>
 
 </body>
