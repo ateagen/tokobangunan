@@ -1,592 +1,289 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Laporan Penjualan</title>
 
-<!-- Chart.js -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-<!-- Supabase JS (load first) -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 
-<!-- ============================
-     CSS PATOKAN — B (Modern premium)
-=============================== -->
 <style>
 :root{
-  --bg:#f4fff7;
-  --card:#ffffff;
-  --text:#072017;
-  --muted:#4f6f61;
-  --primary:#3ec17a;
-  --primary-700:#2fa76a;
-  --danger:#ef4444;
-  --radius:14px;
-  --shadow: 0 12px 30px rgba(8,42,24,0.06);
-  --max-w:1200px;
-  --gap:14px;
-  --font: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  --green:#4fd1a5;
+  --green-dark:#2fb389;
+  --green-soft:#e9f8f2;
+  --bg:#f4fbf8;
+  --text:#134e3a;
+  --danger:#e74c3c;
 }
 *{box-sizing:border-box}
-html,body{height:100%;margin:0;background:var(--bg);font-family:var(--font);color:var(--text);-webkit-font-smoothing:antialiased}
-.container{max-width:var(--max-w);margin:20px auto;padding:18px}
-
-/* Header */
-.header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}
-.brand{display:flex;align-items:center;gap:14px}
-.logo{width:64px;height:64px;border-radius:14px;background:linear-gradient(135deg,var(--primary),var(--primary-700));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;box-shadow:var(--shadow)}
-.title{line-height:1}
-.title h1{margin:0;font-size:1.2rem}
-.title p{margin:0;color:var(--muted);font-size:0.95rem}
-
-/* Controls */
-.controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px}
-.controls .group{display:flex;flex-direction:column;gap:6px}
-.controls label{font-size:0.85rem;color:var(--muted)}
-.input, input[type="date"], button{padding:10px 12px;border-radius:10px;border:1px solid #e9f6ee;background:white;font-size:0.95rem}
-.btn{background:var(--primary);color:#fff;border:0;padding:10px 14px;border-radius:10px;cursor:pointer;font-weight:700}
-.btn.ghost{background:transparent;border:1px solid rgba(62,193,122,0.12);color:var(--primary)}
-.btn.danger{background:var(--danger);color:#fff}
-
-/* Layout */
-.grid{display:grid;grid-template-columns:1fr;gap:14px}
-@media(min-width:980px){ .grid{grid-template-columns:2fr 1fr;} }
-
-/* Card */
-.card{background:var(--card);border-radius:var(--radius);padding:14px;box-shadow:var(--shadow)}
-
-/* Chart */
-#chartWrap{height:320px}
-
-/* Table */
-.table-wrap{overflow:auto;margin-top:8px;border-radius:10px}
-table{width:100%;border-collapse:collapse;font-size:0.95rem}
-th,td{padding:10px 12px;text-align:left;border-bottom:1px solid #f1f6f3}
-th{background:rgba(74,221,140,0.08);color:var(--muted);font-weight:700}
-.detail-row td{background:#fbfff9;padding:12px 20px}
-
-/* Modal */
-.modal-backdrop{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,2,0.45);z-index:1200;padding:16px}
-.modal{width:100%;max-width:640px;background:var(--card);border-radius:12px;padding:18px;box-shadow:0 18px 44px rgba(0,0,0,0.18)}
-
-/* Spinner */
-.spinner{width:36px;height:36px;border-radius:50%;border:4px solid #eaf7ee;border-top-color:var(--primary);animation:spin .85s linear infinite;display:none;margin:auto}
-@keyframes spin{to{transform:rotate(360deg)}}
-
-/* Utilities */
-.kecil{font-size:0.86rem;color:var(--muted)}
-.center{text-align:center}
-.hidden{display:none !important}
-
-/* Responsive */
-@media(max-width:520px){
-  .controls{gap:8px}
-  .logo{width:52px;height:52px}
-  #chartWrap{height:220px}
+body{margin:0;font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
+header{
+  background:var(--green);
+  color:white;
+  padding:16px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
 }
+button{
+  border:none;
+  padding:10px 14px;
+  border-radius:6px;
+  cursor:pointer;
+  background:var(--green);
+  color:white;
+}
+button.secondary{
+  background:white;
+  color:var(--green-dark);
+  border:1px solid var(--green-dark);
+}
+button.danger{background:var(--danger)}
+.container{padding:16px}
+.filters{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  margin-bottom:16px;
+}
+button:hover{background:var(--green-dark)}
+
+td:hover{background: rgb(16, 248, 16)}
+
+input[type=date]{
+  padding:8px;
+  border-radius:6px;
+  border:1px solid #ccc;
+}
+.table-wrap{
+  background:white;
+  border-radius:10px;
+  overflow:auto;
+  margin-bottom:24px;
+}
+table{width:100%;border-collapse:collapse}
+th,td{padding:10px;border-bottom:1px solid #eee}
+th{background:var(--green-soft)}
+.spinner{
+  position:fixed;inset:0;display:none;
+  align-items:center;justify-content:center;
+  background:rgba(255,255,255,.7);z-index:99;
+}
+.spinner div{
+  width:40px;height:40px;
+  border:5px solid var(--green-soft);
+  border-top:5px solid var(--green-dark);
+  border-radius:50%;animation:spin 1s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
 </style>
 </head>
 <body>
 
+<header>
+  <h2>Laporan Penjualan</h2>
+  <button class="secondary" onclick="location.href='admin.html'">Kembali ke Admin</button>
+</header>
+
 <div class="container">
-  <div class="header">
-    <div class="brand">
-      <div class="logo">LP</div>
-      <div class="title">
-        <h1>Laporan Penjualan</h1>
-        <p id="storeInfo" class="kecil">Memuat info toko...</p>
-      </div>
-    </div>
-    <div style="display:flex;gap:8px;align-items:center">
-      <button class="btn ghost" onclick="goAdmin()">Kembali ke Admin</button>
-    </div>
-  </div>
-
-  <!-- Controls -->
-  <div class="controls card">
-    <div class="group">
-      <label>Dari</label>
-      <input type="date" id="dari" />
-    </div>
-    <div class="group">
-      <label>Sampai</label>
-      <input type="date" id="sampai" />
-    </div>
-
-    <div style="display:flex;align-items:flex-end;gap:8px;margin-left:8px">
-      <button class="btn" id="btnApply" onclick="applyFilter()">Terapkan</button>
-      <button class="btn ghost" onclick="resetToToday()">Hari Ini</button>
-      <button class="btn" onclick="downloadCSV()">Download CSV</button>
-    </div>
-  </div>
-
-  <div class="grid">
-    <!-- Left: chart + totals -->
-    <div>
-      <div class="card">
-        <h3 style="margin-top:0">Grafik Penjualan</h3>
-        <div id="chartWrap">
-          <canvas id="salesChart"></canvas>
-        </div>
-      </div>
-
-      <div class="card" style="margin-top:12px">
-        <h3 style="margin-top:0">Tabel Total Penjualan (per tanggal)</h3>
-        <div id="spinTotals" class="spinner" aria-hidden="true"></div>
-        <div class="table-wrap">
-          <table id="tableTotals">
-            <thead>
-              <tr><th>Tanggal</th><th>Total Pengeluaran</th><th>Total Penjualan</th><th>Subtotal</th></tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- Right: transaksi -->
-    <div>
-      <div class="card">
-        <h3 style="margin-top:0">Daftar Transaksi</h3>
-        <div id="spinTrans" class="spinner" aria-hidden="true"></div>
-        <div class="table-wrap" style="margin-top:8px">
-          <table id="tableTransaksi">
-            <thead>
-              <tr><th>Tanggal</th><th>Transaksi ke</th><th>Total Transaksi</th><th>Aksi</th></tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  </div>
+<div class="filters">
+  <input type="date" id="from">
+  <input type="date" id="to">
+  <button onclick="loadData()">Filter</button>
+  <button onclick="downloadXLS()">Download XLS</button>
+  <button class="danger" onclick="hapusTransaksi('old')">Hapus > 3 Bulan</button>
+  <button class="danger" onclick="hapusTransaksi('all')">Hapus Semua</button>
 </div>
 
-<!-- Delete modal -->
-<div id="modalDeleteBackdrop" class="modal-backdrop">
-  <div class="modal">
-    <h3>Hapus Transaksi</h3>
-    <p class="kecil">Yakin ingin menghapus transaksi ini? (Aksi ini akan menghapus detail transaksi juga.)</p>
-    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
-      <button class="btn ghost" onclick="closeDeleteModal()">Batal</button>
-      <button class="btn danger" id="confirmDeleteBtn" onclick="confirmDelete()">Hapus</button>
-    </div>
-    <div style="margin-top:12px" id="spinDeleteWrap"><div id="spinDelete" class="spinner"></div></div>
-  </div>
+<h3>Tabel Total</h3>
+<div class="table-wrap">
+<table id="tableTotal">
+<thead>
+<tr>
+  <th>Tanggal</th>
+  <th>Total Penjualan</th>
+  <th>Total Pengeluaran</th>
+  <th>Subtotal</th>
+  <th>Aksi</th>
+</tr>
+</thead>
+<tbody></tbody>
+</table>
 </div>
 
-<!-- =========================
-     Supabase init (MUST be before usage)
-========================= -->
+<h3>Detail Penjualan & Pengeluaran</h3>
+<div class="table-wrap">
+<table id="tableDetail">
+<thead>
+<tr>
+  <th>Tanggal</th>
+  <th>Jenis</th>
+  <th>Nama</th>
+  <th>Jumlah</th>
+  <th>Harga/Biaya</th>
+  <th>Total</th>
+  <th>Aksi</th>
+</tr>
+</thead>
+<tbody></tbody>
+</table>
+</div>
+</div>
+
+<div class="spinner" id="spinner"><div></div></div>
+
 <script>
-const SUPABASE_URL = "https://mcqjsoadadjrjwwqfzjh.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable___GKiTfqGSEgxJ4-MZtfow_MnkSZUu5";
-/* Use `client` variable to avoid conflict/TDZ */
-const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-</script>
+const SUPABASE_URL="https://fgoeqtyaxwccxluxdvni.supabase.co";
+const SUPABASE_ANON_KEY="sb_publishable_ZXJgBsB-sswr7qblwGMnLg_p6QaXKwP";
+const db=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 
-<!-- Main script (uses `client`) -->
-<script>
-/* state */
-let chart = null;
-let currentFilter = { dari: null, sampai: null };
-let deleteTargetId = null;
+const spinner=document.getElementById('spinner');
+function showSpinner(v){spinner.style.display=v?'flex':'none'}
 
-/* helpers */
-const el = id => document.getElementById(id);
-const showSpinner = id => { const e = el(id); if (e) e.style.display = 'block'; };
-const hideSpinner = id => { const e = el(id); if (e) e.style.display = 'none'; };
-const fmt = n => Number(n||0).toLocaleString('id');
-const escapeHtml = s => (s==null)?'':String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m]);
-const goAdmin = () => window.location.href = 'admin.html';
+let DATA_TOTAL=[], DATA_DETAIL=[];
 
-/* init default dates -> today */
-function setDefaultDatesToToday(){
-  const today = new Date().toISOString().slice(0,10);
-  el('dari').value = today;
-  el('sampai').value = today;
-  currentFilter.dari = today;
-  currentFilter.sampai = today;
-}
-setDefaultDatesToToday();
+(function(){
+  const d=new Date().toISOString().split('T')[0];
+  from.value=d; to.value=d;
+})();
 
-/* load store info */
-async function loadStoreInfo(){
-  try{
-    const { data, error } = await client.from('toko_info').select('nama_toko,no_hp').limit(1).maybeSingle();
-    if (data) el('storeInfo').textContent = `${data.nama_toko || ''}${data.no_hp ? ' • ' + data.no_hp : ''}`;
-    else el('storeInfo').textContent = 'Nama toko belum diatur';
-  }catch(e){
-    el('storeInfo').textContent = 'Gagal memuat info toko';
-    console.error(e);
-  }
-}
-loadStoreInfo();
+function tsStart(d){return d+"T00:00:00"}
+function tsEnd(d){return d+"T23:59:59"}
 
-/* apply filter (button) */
-async function applyFilter(){
-  const dari = el('dari').value;
-  const sampai = el('sampai').value;
-  if (!dari || !sampai) return;
-  currentFilter = { dari, sampai };
-  await Promise.all([loadTotals(), loadTransaksi(), renderChart()]);
-}
+async function loadData(){
+  showSpinner(true);
+  DATA_TOTAL=[]; DATA_DETAIL=[];
 
-/* reset to today */
-async function resetToToday(){
-  setDefaultDatesToToday();
-  await applyFilter();
-}
+  const f=from.value,t=to.value;
 
-/* load totals aggregate by date */
-async function loadTotals(){
-  const tbody = document.querySelector('#tableTotals tbody');
-  tbody.innerHTML = '';
-  showSpinner('spinTotals');
+  const {data:jual}=await db.from('penjualan')
+    .select('*').gte('tgl',tsStart(f)).lte('tgl',tsEnd(t));
 
-  const dari = currentFilter.dari;
-  const sampai = currentFilter.sampai + ' 23:59:59';
+  const {data:keluar}=await db.from('pengeluaran')
+    .select('*').gte('tgl',tsStart(f)).lte('tgl',tsEnd(t));
 
-  try {
-    // pengeluaran in range
-    const { data: pengeluaranRaw, error: errP } = await client
-      .from('pengeluaran')
-      .select('tanggal, jumlah')
-      .gte('tanggal', dari)
-      .lte('tanggal', sampai)
-      .order('tanggal', { ascending: true });
+  const map={};
 
-    // transaksi in range (use column `total`)
-    const { data: transaksiRaw, error: errT } = await client
-      .from('transaksi')
-      .select('tanggal, total')
-      .gte('tanggal', dari)
-      .lte('tanggal', sampai)
-      .order('tanggal', { ascending: true });
+  // Detail Penjualan
+  tableDetail.querySelector('tbody').innerHTML='';
+  jual.forEach(r=>{
+    const d=r.tgl.split('T')[0];
+    map[d]=map[d]||{jual:0,keluar:0};
+    map[d].jual+=Number(r.total);
 
-    hideSpinner('spinTotals');
-
-    const sumByDate = {};
-    (pengeluaranRaw||[]).forEach(p => {
-      const d = (new Date(p.tanggal)).toISOString().slice(0,10);
-      if (!sumByDate[d]) sumByDate[d] = { pengeluaran:0, penjualan:0 };
-      sumByDate[d].pengeluaran += Number(p.jumlah||0);
-    });
-    (transaksiRaw||[]).forEach(t => {
-      const d = (new Date(t.tanggal)).toISOString().slice(0,10);
-      if (!sumByDate[d]) sumByDate[d] = { pengeluaran:0, penjualan:0 };
-      sumByDate[d].penjualan += Number(t.total || 0);
-    });
-
-    const dates = Object.keys(sumByDate).sort();
-    if (dates.length === 0){
-      tbody.innerHTML = '<tr><td colspan="4" class="kecil center">Tidak ada data</td></tr>';
-      return;
-    }
-
-    const rows = dates.map(d => {
-      const v = sumByDate[d];
-      const subtotal = v.penjualan - v.pengeluaran;
-      return `<tr>
-        <td>${d}</td>
-        <td>Rp ${fmt(v.pengeluaran)}</td>
-        <td>Rp ${fmt(v.penjualan)}</td>
-        <td>Rp ${fmt(subtotal)}</td>
-      </tr>`;
-    }).join('');
-    tbody.innerHTML = rows;
-
-  } catch (e) {
-    hideSpinner('spinTotals');
-    console.error(e);
-    tbody.innerHTML = '<tr><td colspan="4" class="kecil center">Gagal memuat data</td></tr>';
-  }
-}
-
-/* load transaksi list with nested items */
-async function loadTransaksi(){
-  const tbody = document.querySelector('#tableTransaksi tbody');
-  tbody.innerHTML = '';
-  showSpinner('spinTrans');
-
-  const dari = currentFilter.dari;
-  const sampai = currentFilter.sampai + ' 23:59:59';
-
-  try {
-    const { data, error } = await client
-      .from('transaksi')
-      // map total -> total_penjualan for UI consistency, include nested items
-      .select('id, tanggal, total as total_penjualan, transaksi_item(*)')
-      .gte('tanggal', dari)
-      .lte('tanggal', sampai)
-      .order('tanggal', { ascending: true });
-
-    hideSpinner('spinTrans');
-
-    if (!data || data.length === 0){
-      tbody.innerHTML = '<tr><td colspan="4" class="kecil center">Tidak ada transaksi</td></tr>';
-      return;
-    }
-
-    const running = {};
-    data.forEach(trx => {
-      const d = (new Date(trx.tanggal)).toISOString().slice(0,10);
-      running[d] = (running[d] || 0) + 1;
-      const idx = running[d];
-
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td>${d}</td>
-        <td>Ke-${idx}</td>
-        <td>Rp ${fmt(Number(trx.total_penjualan || 0))}</td>
-        <td>
-          <button class="btn ghost" onclick="toggleDetail(${trx.id}, this)">Detail</button>
-        </td>`;
-      tbody.appendChild(tr);
-
-      const det = document.createElement('tr');
-      det.className = 'detail-row';
-      det.id = `detail-${trx.id}`;
-      det.style.display = 'none';
-      det.innerHTML = `<td colspan="4" class="kecil center">Memuat detail...</td>`;
-      tbody.appendChild(det);
-    });
-
-  } catch (e) {
-    hideSpinner('spinTrans');
-    console.error(e);
-    tbody.innerHTML = '<tr><td colspan="4" class="kecil center">Gagal memuat transaksi</td></tr>';
-  }
-}
-
-/* toggle detail (uses transaksi_item table) */
-async function toggleDetail(transaksiId, btnEl){
-  const detailRow = el(`detail-${transaksiId}`);
-  if (!detailRow) return;
-
-  const isHidden = (detailRow.style.display === 'none' || detailRow.style.display === '');
-  detailRow.style.display = isHidden ? 'table-row' : 'none';
-  btnEl.textContent = isHidden ? 'Tutup' : 'Detail';
-  if (!isHidden) return;
-
-  detailRow.firstElementChild.innerHTML = '<div class="kecil">Memuat detail...</div>';
-
-  try {
-    const { data: items } = await client
-      .from('transaksi_item')
-      .select('id, nama_barang, jumlah, harga_modal, harga_jual, subtotal')
-      .eq('transaksi_id', transaksiId)
-      .order('id', { ascending: true });
-
-    if (!items || items.length === 0){
-      detailRow.firstElementChild.innerHTML = '<div class="kecil">Tidak ada item</div>';
-      return;
-    }
-
-    let html = `<div style="overflow:auto"><table style="width:100%;border-collapse:collapse"><thead><tr style="background:#f3fff4"><th>Nama Barang</th><th>Jumlah</th><th>Harga Modal</th><th>Harga Jual</th><th>Subtotal</th></tr></thead><tbody>`;
-    items.forEach(it => {
-      html += `<tr>
-        <td>${escapeHtml(it.nama_barang)}</td>
-        <td>${it.jumlah}</td>
-        <td>Rp ${fmt(it.harga_modal)}</td>
-        <td>Rp ${fmt(it.harga_jual)}</td>
-        <td>Rp ${fmt(it.subtotal)}</td>
-      </tr>`;
-    });
-    html += `</tbody></table></div>`;
-    detailRow.firstElementChild.innerHTML = html;
-
-  } catch (e) {
-    console.error(e);
-    detailRow.firstElementChild.innerHTML = '<div class="kecil">Gagal memuat detail</div>';
-  }
-}
-
-/* renderChart */
-async function renderChart(){
-  const dari = currentFilter.dari;
-  const sampai = currentFilter.sampai + ' 23:59:59';
-  try {
-    const { data } = await client
-      .from('transaksi')
-      .select('tanggal,total')
-      .gte('tanggal', dari)
-      .lte('tanggal', sampai)
-      .order('tanggal', { ascending: true });
-
-    const agg = {};
-    (data||[]).forEach(r => {
-      const d = (new Date(r.tanggal)).toISOString().slice(0,10);
-      agg[d] = (agg[d] || 0) + Number(r.total || 0);
-    });
-
-    const labels = Object.keys(agg).sort();
-    const values = labels.map(l => agg[l]);
-
-    const ctx = el('salesChart').getContext('2d');
-    if (chart) chart.destroy();
-    chart = new Chart(ctx, {
-      type: 'line',
-      data: {
-        labels,
-        datasets: [{
-          label: 'Total Penjualan',
-          data: values,
-          fill: true,
-          tension: 0.25,
-          backgroundColor: 'rgba(62,193,122,0.12)',
-          borderColor: 'rgba(62,193,122,1)',
-          pointRadius: 4
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-          y: { ticks: { callback: v => 'Rp ' + Number(v).toLocaleString('id') } }
-        },
-        plugins: { legend: { display: false } }
-      }
-    });
-
-  } catch (e) {
-    console.error(e);
-  }
-}
-
-/* downloadCSV - returns 3 sections: TOTAL, DETAIL TRANSAKSI, PENGELUARAN */
-async function downloadCSV(){
-  const dari = currentFilter.dari;
-  const sampai = currentFilter.sampai + ' 23:59:59';
-
-  try {
-    const { data: trx } = await client
-      .from('transaksi')
-      .select('id,tanggal,total')
-      .gte('tanggal', dari)
-      .lte('tanggal', sampai)
-      .order('tanggal',{ascending:true});
-
-    const trxIds = (trx||[]).map(t => t.id).filter(Boolean);
-    let items = [];
-    if (trxIds.length > 0){
-      const { data: it } = await client
-        .from('transaksi_item')
-        .select('transaksi_id,id,nama_barang,jumlah,harga_modal,harga_jual,subtotal')
-        .in('transaksi_id', trxIds)
-        .order('transaksi_id',{ascending:true});
-      items = it || [];
-    }
-
-    const { data: pengeluaran } = await client
-      .from('pengeluaran')
-      .select('id,tanggal,keterangan,jumlah')
-      .gte('tanggal', dari)
-      .lte('tanggal', sampai)
-      .order('tanggal',{ascending:true});
-
-    // aggregate totals
-    const agg = {};
-    (pengeluaran||[]).forEach(p => {
-      const d = (new Date(p.tanggal)).toISOString().slice(0,10);
-      if (!agg[d]) agg[d] = { pengeluaran:0, penjualan:0 };
-      agg[d].pengeluaran += Number(p.jumlah || 0);
-    });
-    (trx||[]).forEach(t => {
-      const d = (new Date(t.tanggal)).toISOString().slice(0,10);
-      if (!agg[d]) agg[d] = { pengeluaran:0, penjualan:0 };
-      agg[d].penjualan += Number(t.total || 0);
-    });
-
-    const wrap = v => {
-      if (v === null || v === undefined) return '""';
-      const s = String(v).replace(/"/g,'""');
-      return `"${s}"`;
+    const row={
+      id:r.id,
+      tanggal:new Date(r.tgl).toLocaleString(),
+      jenis:'Penjualan',
+      nama:r.nama_barang,
+      jumlah:r.jumlah,
+      harga:r.total/r.jumlah,
+      total:r.total
     };
+    DATA_DETAIL.push(row);
 
-    let csv = '';
-    csv += '=== TABEL TOTAL ===\n';
-    csv += 'tanggal,total_pengeluaran,total_penjualan,subtotal\n';
-    Object.keys(agg).sort().forEach(d => {
-      const v = agg[d];
-      const subtotal = v.penjualan - v.pengeluaran;
-      csv += [wrap(d), wrap(v.pengeluaran), wrap(v.penjualan), wrap(subtotal)].join(',') + '\n';
-    });
+    tableDetail.querySelector('tbody').innerHTML+=`
+    <tr>
+      <td>${row.tanggal}</td>
+      <td>${row.jenis}</td>
+      <td>${row.nama}</td>
+      <td>${row.jumlah}</td>
+      <td>${row.harga}</td>
+      <td>${row.total}</td>
+      <td><button class="danger" onclick="hapusDetail(${row.id},'penjualan')">Hapus</button></td>
+    </tr>`;
+  });
 
-    csv += '\n=== TABEL DETAIL TRANSAKSI ===\n';
-    csv += 'transaksi_id,tanggal,item_id,nama_barang,jumlah,harga_modal,harga_jual,subtotal\n';
-    const dateMap = {};
-    (trx||[]).forEach(t => { dateMap[t.id] = (new Date(t.tanggal)).toISOString().slice(0,10); });
-    (items||[]).forEach(it => {
-      csv += [
-        wrap(it.transaksi_id),
-        wrap(dateMap[it.transaksi_id] || ''),
-        wrap(it.id),
-        wrap(it.nama_barang),
-        wrap(it.jumlah),
-        wrap(it.harga_modal),
-        wrap(it.harga_jual),
-        wrap(it.subtotal)
-      ].join(',') + '\n';
-    });
+  // Detail Pengeluaran
+  keluar.forEach(r=>{
+    const d=r.tgl.split('T')[0];
+    map[d]=map[d]||{jual:0,keluar:0};
+    map[d].keluar+=Number(r.jumlah);
 
-    csv += '\n=== TABEL PENGELUARAN ===\n';
-    csv += 'id,tanggal,keterangan,jumlah\n';
-    (pengeluaran||[]).forEach(p => {
-      const d = (new Date(p.tanggal)).toISOString().slice(0,10);
-      csv += [wrap(p.id), wrap(d), wrap(p.keterangan), wrap(p.jumlah)].join(',') + '\n';
-    });
+    const row={
+      id:r.id,
+      tanggal:new Date(r.tgl).toLocaleString(),
+      jenis:'Pengeluaran',
+      nama:r.deskripsi,
+      jumlah:'-',
+      harga:r.jumlah,
+      total:r.jumlah
+    };
+    DATA_DETAIL.push(row);
 
-    // download
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    const dariLabel = currentFilter.dari || 'all';
-    const sampaiLabel = currentFilter.sampai || 'all';
-    a.href = url;
-    a.download = `laporan_penjualan_${dariLabel}_to_${sampaiLabel}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
+    tableDetail.querySelector('tbody').innerHTML+=`
+    <tr>
+      <td>${row.tanggal}</td>
+      <td>${row.jenis}</td>
+      <td>${row.nama}</td>
+      <td>${row.jumlah}</td>
+      <td>${row.harga}</td>
+      <td>${row.total}</td>
+      <td><button class="danger" onclick="hapusDetail(${row.id},'pengeluaran')">Hapus</button></td>
+    </tr>`;
+  });
 
-  } catch (e) {
-    console.error(e);
-    alert('Gagal membuat CSV (cek console)'); // only fallback here
+  // Tabel Total
+  tableTotal.querySelector('tbody').innerHTML='';
+  Object.keys(map).sort().forEach(d=>{
+    const row={
+      tanggal:d,
+      total_penjualan:map[d].jual,
+      total_pengeluaran:map[d].keluar,
+      subtotal:map[d].jual-map[d].keluar
+    };
+    DATA_TOTAL.push(row);
+
+    tableTotal.querySelector('tbody').innerHTML+=`
+    <tr>
+      <td>${row.tanggal}</td>
+      <td>${row.total_penjualan}</td>
+      <td>${row.total_pengeluaran}</td>
+      <td>${row.subtotal}</td>
+      <td><button class="danger" onclick="hapusTotal('${row.tanggal}')">Hapus</button></td>
+    </tr>`;
+  });
+
+  showSpinner(false);
+}
+
+function downloadXLS(){
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(DATA_TOTAL),'TOTAL');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(DATA_DETAIL),'DETAIL');
+  XLSX.writeFile(wb,'laporan_penjualan.xls');
+}
+
+async function hapusDetail(id,table){
+  if(!confirm("Hapus transaksi ini?")) return;
+  await db.from(table).delete().eq('id',id);
+  loadData();
+}
+
+async function hapusTotal(tgl){
+  if(!confirm("Hapus semua transaksi tanggal "+tgl+"?")) return;
+  // Hapus semua penjualan & pengeluaran tgl tersebut
+  await db.from('penjualan').delete().gte('tgl',tgl+"T00:00:00").lte('tgl',tgl+"T23:59:59");
+  await db.from('pengeluaran').delete().gte('tgl',tgl+"T00:00:00").lte('tgl',tgl+"T23:59:59");
+  loadData();
+}
+
+async function hapusTransaksi(type){
+  if(!confirm(type==='all'?'Hapus semua data?':'Hapus transaksi > 3 bulan?')) return;
+  if(type==='all'){
+    await db.from('penjualan').delete().neq('id',0);
+    await db.from('pengeluaran').delete().neq('id',0);
+  } else {
+    const d=new Date(); d.setMonth(d.getMonth()-3);
+    await db.from('penjualan').delete().lt('tgl', d.toISOString());
+    await db.from('pengeluaran').delete().lt('tgl', d.toISOString());
   }
+  loadData();
 }
 
-/* delete handling */
-function openDeleteModal(id){
-  deleteTargetId = id;
-  el('modalDeleteBackdrop').style.display = 'flex';
-}
-function closeDeleteModal(){
-  deleteTargetId = null;
-  el('modalDeleteBackdrop').style.display = 'none';
-}
-async function confirmDelete(){
-  if (!deleteTargetId) return;
-  showSpinner('spinDelete');
-  try {
-    await client.from('transaksi_item').delete().eq('transaksi_id', deleteTargetId);
-    await client.from('transaksi').delete().eq('id', deleteTargetId);
-    hideSpinner('spinDelete');
-    closeDeleteModal();
-    await applyFilter();
-  } catch (e) {
-    hideSpinner('spinDelete');
-    console.error(e);
-    closeDeleteModal();
-  }
-}
-
-/* initial load (after everything initialized) */
-window.addEventListener('load', async ()=>{
-  await applyFilter();
-});
+loadData();
 </script>
 </body>
 </html>
