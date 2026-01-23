@@ -17,6 +17,41 @@
   --text:#134e3a;
   --danger:#e74c3c;
 }
+
+
+table{
+  width:100%;
+  border-collapse:collapse;
+  border:1px solid #cbd5e1; /* garis luar tabel */
+}
+
+th, td{
+  padding:10px;
+  border:1px solid #cbd5e1; /* garis seperti excel */
+  font-size:14px;
+}
+
+th{
+  background:var(--green-soft);
+  font-weight:bold;
+  text-align:left;
+}
+
+/* zebra row biar makin kebaca */
+tbody tr:nth-child(even){
+  background:#f8fafc;
+}
+
+/* hover tetap lembut */
+tbody tr:hover{
+  background:#dcfce7;
+}
+
+
+
+
+
+
 *{box-sizing:border-box}
 body{margin:0;font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
 header{
