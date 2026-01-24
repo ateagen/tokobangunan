@@ -9,11 +9,12 @@
 :root{
   --green:#1fbf75;
   --green-dark:#159c5f;
-  --green-soft:#e9f8f1;
+  --green-soft:#f8f1f1;
   --bg:#31c77c;
   --text:#1f2937;
   --white:#ffffff;
   --shadow:0 10px 25px rgba(0,0,0,.08);
+  --danger:#e74c3c;
 }
 
 *{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,-apple-system,BlinkMacSystemFont}
@@ -28,12 +29,15 @@ body{
   padding:20px;
 }
 
+/* Container admin */
 .container{
   width:100%;
   max-width:1100px;
   padding:24px;
+  display:none; /* disembunyikan sampai login berhasil */
 }
 
+/* Header */
 .header{
   background:var(--white);
   padding:28px;
@@ -54,6 +58,7 @@ body{
   opacity:.8;
 }
 
+/* Grid card */
 .grid{
   display:grid;
   grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
@@ -91,31 +96,35 @@ body{
   opacity:.7;
 }
 
-button, input[type="text"]{
+/* Buttons & inputs */
+button, input[type="text"], input[type="password"], select{
   font-size:16px;
   padding:10px 16px;
   border-radius:10px;
   border:none;
   outline:none;
+  cursor:pointer;
+  transition:.25s ease;
 }
 
 button{
-  cursor:pointer;
   background:var(--green);
   color:var(--white);
-  transition:.25s ease;
 }
 
 button:hover{
   background:var(--green-dark);
 }
 
-/* Modal */
+button.danger{background:var(--danger);}
+button.danger:hover{background:#c0392b;}
+
+/* Modal umum */
 .modal{
   position:fixed;
   inset:0;
   background:rgba(0,0,0,.45);
-  display:none;
+  display:flex;
   align-items:center;
   justify-content:center;
   z-index:99;
@@ -126,16 +135,37 @@ button:hover{
   padding:24px;
   border-radius:16px;
   width:90%;
-  max-width:420px;
+  max-width:400px;
   text-align:center;
   box-shadow:var(--shadow);
 }
 
 .modal-box h4{
-  margin-bottom:10px;
+  margin-bottom:15px;
+  word-break:break-word;
 }
 
-/* Loading Spinner */
+.modal-box input{
+  width:90%;
+  margin:10px 0;
+  padding:12px;
+  border-radius:10px;
+  border:1px solid #1f2937;
+  font-size:16px;
+}
+
+.modal-box button{
+  margin-top:15px;
+  width:50%;
+  font-weight:bold;
+  transition:.25s ease;
+}
+
+.modal-box button:hover{
+  opacity:0.85;
+}
+
+/* Loading spinner */
 .loading{
   position:fixed;
   inset:0;
@@ -159,6 +189,30 @@ button:hover{
   to{transform:rotate(360deg)}
 }
 
+/* TABEL AKUN STYLE */
+#tableAkun{
+  width:100%;
+  border-collapse:collapse;
+  background:white;
+  border-radius:10px;
+  overflow:hidden;
+  box-shadow:var(--shadow);
+}
+
+#tableAkun th, #tableAkun td{
+  border:1px solid #cbd5e1;
+  padding:10px;
+  text-align:left;
+}
+
+#tableAkun th{
+  background:var(--green-soft);
+  font-weight:bold;
+}
+
+#tableAkun tbody tr:nth-child(even){background:#f8fafc;}
+#tableAkun tbody tr:hover{background:#dcfce7;}
+
 @media(max-width:600px){
   .header h1{font-size:22px}
   .card{padding:22px}
@@ -168,30 +222,77 @@ button:hover{
 
 <body>
 
+<!-- Loading -->
 <div class="loading" id="loading">
   <div class="spinner"></div>
 </div>
 
+<!-- Modal info & konfirmasi -->
 <div class="modal" id="modal">
   <div class="modal-box">
     <h4 id="modalTitle">Info</h4>
     <p id="modalMsg"></p>
-    <button onclick="closeModal()">Tutup</button>
   </div>
 </div>
 
-<div class="container">
+<!-- Modal Login -->
+<div class="modal" id="modalLogin" style="display:flex;">
+  <div class="modal-box">
+    <h4>Login Admin</h4>
+    <input type="text" id="loginUsername" placeholder="Username">
+    <input type="password" id="loginPassword" placeholder="Password">
+    <button onclick="loginAdmin()">Login</button>
+  </div>
+</div>
+
+<!-- Kontainer Admin -->
+<div class="container" id="adminContainer">
   <div class="header">
     <h1>Admin POS</h1>
     <p>Kelola toko dan laporan</p>
-    <button onclick="window.location='index.html'" style="margin-top:10px;">⬅ Kembali ke POS</button>
+    <button onclick="window.location.href='pos.html'">⬅ Kembali ke POS</button>
   </div>
 
   <!-- Form ubah nama toko -->
   <div style="background:white; padding:20px; border-radius:18px; box-shadow:var(--shadow); margin-bottom:20px;">
     <h3>Ubah Nama Toko</h3>
     <input type="text" id="inputNamaToko" placeholder="Masukkan nama toko baru" style="width:70%; border: #1f2937 solid 1px;">
-    <button onclick="updateNamaToko()">Simpan</button>
+    <button onclick="showYesNoModal('Konfirmasi','Simpan nama toko baru?', updateNamaToko)">Simpan</button>
+  </div>
+
+  <!-- Form update saldo kas -->
+  <div style="background:white; padding:20px; border-radius:18px; box-shadow:var(--shadow); margin-bottom:20px;">
+    <h3>Update Saldo Kas</h3>
+    <input type="text" id="inputSaldoKas" placeholder="Masukkan saldo kas baru" style="width:50%; border: #1f2937 solid 1px;">
+    <button onclick="showYesNoModal('Konfirmasi','Simpan saldo kas baru?', updateSaldoKas)">Simpan</button>
+  </div>
+
+  <!-- Form tambah akun -->
+  <div style="background:white; padding:20px; border-radius:18px; box-shadow:var(--shadow); margin-bottom:20px;">
+    <h3>Tambah Akun</h3>
+    <input type="text" id="inputUsernameAkun" placeholder="Username" style="width:45%; border: #1f2937 solid 1px; margin-top:10px;">
+    <input type="text" id="inputPasswordAkun" placeholder="Password" style="width:45%; border: #1f2937 solid 1px; margin-top:10px;">
+    <select id="inputRoleAkun" style="width:45%; margin-top:10px; padding:10px; border-radius:10px; border: #1f2937 solid 1px;">
+      <option value="admin">Admin</option>
+      <option value="kasir">Kasir</option>
+    </select>
+    <button onclick="showYesNoModal('Konfirmasi','Tambah akun baru?', tambahAkun)">Simpan</button>
+  </div>
+
+  <!-- Tabel akun -->
+  <div style="background:white; padding:20px; border-radius:18px; box-shadow:var(--shadow); margin-bottom:20px;">
+    <h3>Daftar Akun</h3>
+    <table id="tableAkun">
+      <thead>
+        <tr>
+          <th>Username</th>
+          <th>Password</th>
+          <th>Role</th>
+          <th>Aksi</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
   </div>
 
   <!-- Grid Button -->
@@ -219,57 +320,173 @@ const loading = document.getElementById('loading');
 const modal = document.getElementById('modal');
 const modalMsg = document.getElementById('modalMsg');
 const modalTitle = document.getElementById('modalTitle');
+const modalLogin = document.getElementById('modalLogin');
+const adminContainer = document.getElementById('adminContainer');
 
 function showLoading(show=true){ loading.style.display = show?'flex':'none'; }
-function showModal(title,msg){ modalTitle.textContent=title; modalMsg.textContent=msg; modal.style.display='flex'; }
-function closeModal(){ modal.style.display='none'; }
+function showInfoModal(title,msg){
+  modalTitle.textContent = title;
+  modalMsg.textContent = msg;
+  modal.style.display='flex';
+  setTimeout(()=>{ modal.style.display='none'; },1000);
+}
 
-/* Ambil nama toko saat admin buka */
+/* ---------- LOGIN ---------- */
+async function loginAdmin(){
+  const username = document.getElementById('loginUsername').value.trim();
+  const password = document.getElementById('loginPassword').value.trim();
+  if(!username || !password){ 
+    showInfoModal('Gagal','Semua field harus diisi'); 
+    return; 
+  }
+  showLoading(true);
+  try{
+    const { data } = await supabaseClient.from('akun')
+      .select('*')
+      .eq('username',username)
+      .eq('password',password)
+      .eq('role','admin')
+      .limit(1)
+      .single();
+
+    showLoading(false);
+
+    if(!data){ 
+      showInfoModal('Gagal','Username atau password salah'); 
+      return; 
+    }
+
+    // Login sukses
+    modalLogin.style.display='none';
+    adminContainer.style.display='block';
+    showInfoModal('Berhasil','Login berhasil');
+    loadNamaToko();
+    loadSaldoKas();
+    loadAkun();
+  }catch(err){
+    showLoading(false);
+    console.error(err);
+    showInfoModal('Gagal','Username atau password salah');
+  }
+}
+
+/* ---------- ADMIN FUNCTIONS ---------- */
 async function loadNamaToko(){
   showLoading(true);
   try{
-    const { data, error } = await supabaseClient
-      .from('toko')
-      .select('nama')
-      .limit(1)
-      .single();
+    const { data, error } = await supabaseClient.from('toko').select('nama').limit(1).single();
     showLoading(false);
-    if(error || !data){ showModal('Gagal','Nama toko tidak dapat dimuat'); return; }
+    if(error || !data){ showInfoModal('Gagal','Nama toko tidak dapat dimuat'); return; }
     document.getElementById('inputNamaToko').value = data.nama;
-  }catch(err){
-    showLoading(false);
-    console.error(err);
-    showModal('Error','Terjadi kesalahan saat memuat data');
-  }
+  }catch(err){ showLoading(false); showInfoModal('Error','Terjadi kesalahan saat memuat data'); }
 }
 
-/* Update nama toko */
 async function updateNamaToko(){
   const newName = document.getElementById('inputNamaToko').value.trim();
-  if(!newName){ showModal('Gagal','Nama toko tidak boleh kosong'); return; }
+  if(!newName){ showInfoModal('Gagal','Nama toko tidak boleh kosong'); return; }
+  showLoading(true);
+  try{
+    const { error } = await supabaseClient.from('toko').update({ nama:newName }).eq('id',1);
+    showLoading(false);
+    if(error){ showInfoModal('Gagal','Tidak dapat menyimpan nama toko'); return; }
+    showInfoModal('Berhasil','Nama toko berhasil diperbarui');
+  }catch(err){ showLoading(false); showInfoModal('Error','Terjadi kesalahan saat menyimpan'); }
+}
 
+async function loadSaldoKas(){
   showLoading(true);
   try{
     const { data, error } = await supabaseClient
-      .from('toko')
-      .update({ nama:newName })
-      .eq('id',1); // asumsi hanya ada 1 toko
+      .from('kas').select('*').order('id',{ascending:false}).limit(1).single();
     showLoading(false);
-    if(error){ showModal('Gagal','Tidak dapat menyimpan nama toko'); return; }
-    showModal('Berhasil','Nama toko berhasil diperbarui');
-  }catch(err){
-    showLoading(false);
-    console.error(err);
-    showModal('Error','Terjadi kesalahan saat menyimpan');
-  }
+    document.getElementById('inputSaldoKas').value = data?.sisa_saldo || '';
+  }catch(err){ showLoading(false); console.error(err); }
 }
 
-/* Navigasi placeholder */
-function openPage(page){
-  showModal('Info','Menu "'+page+'" belum dibuat');
+async function updateSaldoKas(){
+  const newSaldo = parseFloat(document.getElementById('inputSaldoKas').value);
+  if(isNaN(newSaldo)){ showInfoModal('Gagal','Saldo tidak valid'); return; }
+  showLoading(true);
+  try{
+    const { data: latestKas } = await supabaseClient
+      .from('kas').select('*').order('id',{ascending:false}).limit(1).single();
+    if(!latestKas){ showLoading(false); showInfoModal('Gagal','Data kas tidak ditemukan'); return; }
+    const { error } = await supabaseClient.from('kas')
+      .update({ sisa_saldo:newSaldo, tgl:new Date().toISOString() })
+      .eq('id',latestKas.id);
+    showLoading(false);
+    if(error){ showInfoModal('Gagal','Tidak dapat menyimpan saldo kas'); return; }
+    document.getElementById('inputSaldoKas').value = newSaldo;
+    showInfoModal('Berhasil','Saldo kas berhasil diperbarui');
+  }catch(err){ showLoading(false); console.error(err); showInfoModal('Error','Terjadi kesalahan saat menyimpan saldo'); }
 }
 
-loadNamaToko();
+async function tambahAkun(){
+  const username = document.getElementById('inputUsernameAkun').value.trim();
+  const password = document.getElementById('inputPasswordAkun').value.trim();
+  const role = document.getElementById('inputRoleAkun').value;
+  if(!username || !password){ showInfoModal('Gagal','Semua field harus diisi'); return; }
+  showLoading(true);
+  try{
+    await supabaseClient.from('akun').insert([{ username,password,role }]);
+    showLoading(false);
+    loadAkun();
+    showInfoModal('Berhasil','Akun berhasil ditambahkan');
+  }catch(err){ showLoading(false); console.error(err); showInfoModal('Error','Terjadi kesalahan saat menambah akun'); }
+}
+
+async function loadAkun(){
+  try{
+    const { data } = await supabaseClient.from('akun').select('*').order('id',{ascending:true});
+    const tbody = document.querySelector('#tableAkun tbody');
+    tbody.innerHTML = '';
+    data.forEach(a=>{
+      tbody.innerHTML += `<tr>
+        <td>${a.username}</td>
+        <td>${a.password}</td>
+        <td>${a.role}</td>
+        <td><button class="danger" onclick="showYesNoModal('Konfirmasi','Hapus akun ${a.username}?',()=>hapusAkun(${a.id}))">Hapus</button></td>
+      </tr>`;
+    });
+  }catch(err){ console.error(err); }
+}
+
+async function hapusAkun(id){
+  showLoading(true);
+  try{
+    await supabaseClient.from('akun').delete().eq('id',id);
+    showLoading(false);
+    loadAkun();
+    showInfoModal('Berhasil','Akun berhasil dihapus');
+  }catch(err){ showLoading(false); console.error(err); showInfoModal('Error','Terjadi kesalahan saat menghapus akun'); }
+}
+
+/* Modal konfirmasi Ya/Tidak */
+function showYesNoModal(title, msg, yesCallback=null){
+  const modalBox = modal.querySelector('.modal-box');
+  modalBox.querySelectorAll('.yesno-btn')?.forEach(b=>b.remove());
+  modalTitle.textContent = title;
+  modalMsg.textContent = msg;
+  modal.style.display='flex';
+
+  const yesBtn = document.createElement('button');
+  yesBtn.textContent='Ya';
+  yesBtn.className='yesno-btn';
+  yesBtn.style.marginTop='10px';
+  yesBtn.style.marginRight='10px';
+  yesBtn.onclick = async ()=>{
+    modalBox.querySelectorAll('.yesno-btn').forEach(b=>b.remove());
+    if(yesCallback) await yesCallback();
+  };
+  modalBox.appendChild(yesBtn);
+
+  const noBtn = document.createElement('button');
+  noBtn.textContent='Tidak';
+  noBtn.className='yesno-btn';
+  noBtn.style.marginTop='10px';
+  noBtn.onclick = ()=> modal.style.display='none';
+  modalBox.appendChild(noBtn);
+}
 </script>
 
 </body>
