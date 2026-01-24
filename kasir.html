@@ -60,8 +60,10 @@ tr.stok-row:hover{background:var(--green-soft)}
 </head>
 <body>
 
+<!-- Loading -->
 <div class="loading" id="loading"><div class="spinner"></div></div>
 
+<!-- Modal Kasir -->
 <div class="modal" id="modal">
   <div class="modal-box">
     <h3 id="modalTitle"></h3>
@@ -71,6 +73,27 @@ tr.stok-row:hover{background:var(--green-soft)}
       <button id="modalOk">OK</button>
       <button onclick="closeModal()" style="background:#ccc;color:#000">Batal</button>
     </div>
+  </div>
+</div>
+
+<!-- Modal Login -->
+<div class="modal" id="loginModal" style="display:flex; background:rgba(0,0,0,.6); z-index:300;">
+  <div class="modal-box">
+    <h3>Login Kasir</h3>
+    <input id="loginUsername" placeholder="Username" style="margin-bottom:8px; width:80%;">
+    <input id="loginPassword" type="password" placeholder="Password" style="margin-bottom:8px; width:80%;">
+    <div style="margin-top:12px; display:flex; gap:10px; justify-content:center;">
+      <button onclick="login()">Login</button>
+    </div>
+    <p id="loginError" style="color:red; margin-top:8px; display:none;"></p>
+  </div>
+</div>
+
+<!-- Modal Info Login -->
+<div class="modal" id="loginInfoModal">
+  <div class="modal-box">
+    <h3 id="loginInfoTitle"></h3>
+    <p id="loginInfoMsg"></p>
   </div>
 </div>
 
@@ -121,12 +144,55 @@ const SUPABASE_ANON_KEY="sb_publishable_ZXJgBsB-sswr7qblwGMnLg_p6QaXKwP";
 const supabaseClient = supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 
 let keranjang=[], namaTokoText="TOKO";
+const totalEl=document.getElementById("total");
+const kembali=document.getElementById("kembali");
 
 setInterval(()=>{jam.textContent=new Date().toLocaleString()},1000);
 
 function showLoading(v){loading.style.display=v?"flex":"none"}
 function showModal(t,m,okFn,form=""){modalTitle.textContent=t;modalMsg.textContent=m;modalForm.innerHTML=form;modal.style.display="flex";if(okFn) modalOk.onclick=okFn;}
 function closeModal(){modal.style.display="none"}
+
+function showLoginInfo(t,m){
+  loginInfoTitle.textContent=t;
+  loginInfoMsg.textContent=m;
+  loginInfoModal.style.display="flex";
+  setTimeout(()=>loginInfoModal.style.display="none",1000);
+}
+
+/* ====== Login ====== */
+async function login(){
+  const username=loginUsername.value.trim();
+  const password=loginPassword.value.trim();
+  loginError.style.display="none";
+
+  if(!username||!password){
+    loginError.textContent="Isi username & password";
+    loginError.style.display="block";
+    return;
+  }
+
+  const {data,error}=await supabaseClient
+    .from("akun")
+    .select("*")
+    .eq("username",username)
+    .eq("password",password)
+    .in("role",["admin","kasir"])
+    .limit(1)
+    .single();
+
+  if(error||!data){
+    showLoginInfo("Gagal","Login gagal");
+    return;
+  }
+
+  // login berhasil
+  loginModal.style.display="none";
+  showLoginInfo("Berhasil","Login berhasil");
+
+  loadToko();
+  loadStok();
+}
 
 /* ====== Load Toko ====== */
 async function loadToko(){
@@ -155,9 +221,7 @@ async function loadStok(){
 
 /* ====== Tambah ke Keranjang ====== */
 function tambahKeKeranjang(item){
-  if(item.jumlah<=0){
-    if(!confirm("Stok kosong, tetap tambahkan?")) return;
-  }
+  if(item.jumlah<=0){if(!confirm("Stok kosong, tetap tambahkan?")) return;}
   const ada=keranjang.find(i=>i.id===item.id);
   if(ada) ada.qty++;
   else keranjang.push({...item,qty:1});
@@ -262,12 +326,6 @@ function tambahPengeluaranModal(){
     closeModal();
   }, form);
 }
-
-const totalEl=document.getElementById("total");
-const kembali=document.getElementById("kembali");
-
-loadToko();
-loadStok();
 </script>
 
 </body>
