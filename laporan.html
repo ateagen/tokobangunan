@@ -26,7 +26,7 @@ button.danger{background:var(--danger)}
 button:hover{background:var(--green-dark)}
 .container{padding:16px}
 .filters{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;}
-input[type=date]{padding:8px;border-radius:6px;border:1px solid #ccc;}
+input[type=date], select{padding:8px;border-radius:6px;border:1px solid #ccc;}
 .table-wrap{background:white;border-radius:10px;overflow:auto;margin-bottom:24px;}
 table{width:100%;border-collapse:collapse;border:1px solid #cbd5e1;}
 th, td{padding:10px;border:1px solid #cbd5e1;font-size:14px;}
@@ -50,7 +50,6 @@ tbody tr:hover{background:#dcfce7;}
 
 <div class="container">
 
-  <!-- SALDO KAS -->
   <div id="boxKas">
     <strong>💰 Saldo Kas</strong>
     <span id="saldoKas">Rp 0</span>
@@ -59,13 +58,17 @@ tbody tr:hover{background:#dcfce7;}
   <div class="filters">
     <input type="date" id="from">
     <input type="date" id="to">
+    <select id="filterJenis">
+      <option value="all">Semua</option>
+      <option value="penjualan">Penjualan</option>
+      <option value="pengeluaran">Pengeluaran</option>
+    </select>
     <button onclick="loadData()">Filter</button>
     <button onclick="downloadXLS()">Download XLS</button>
     <button class="danger" onclick="hapusTransaksi('old')">Hapus > 3 Bulan</button>
     <button class="danger" onclick="hapusTransaksi('all')">Hapus Semua</button>
   </div>
 
-  <!-- TABEL TOTAL -->
   <h3>Tabel Total</h3>
   <div class="table-wrap">
     <table id="tableTotal">
@@ -82,13 +85,13 @@ tbody tr:hover{background:#dcfce7;}
     </table>
   </div>
 
-  <!-- DETAIL PENJUALAN & PENGELUARAN -->
   <h3>Detail Penjualan & Pengeluaran</h3>
   <div class="table-wrap">
     <table id="tableDetail">
       <thead>
         <tr>
           <th>Tanggal</th>
+          <th>Nama Kasir</th>
           <th>Jenis</th>
           <th>Nama</th>
           <th>Jumlah</th>
@@ -114,25 +117,13 @@ const spinner=document.getElementById('spinner');
 function showSpinner(v){spinner.style.display=v?'flex':'none'}
 
 let DATA_TOTAL=[], DATA_DETAIL=[];
-
 function rupiah(n){return "Rp "+Number(n||0).toLocaleString("id-ID");}
 
-/* ===== LOAD SALDO KAS TERAKHIR ===== */
 async function loadKas(){
-  try {
-    const { data, error } = await db
-      .from('kas')
-      .select('sisa_saldo')
-      .order('id', { ascending:false })
-      .limit(1)
-      .single();
-
-    if(error) console.error(error);
-    if(data) saldoKas.innerText = rupiah(data.sisa_saldo);
-  } catch(e){ console.error(e); }
+  const { data } = await db.from('kas').select('sisa_saldo').order('id',{ascending:false}).limit(1).single();
+  if(data) saldoKas.innerText=rupiah(data.sisa_saldo);
 }
 
-/* ===== DATE DEFAULT ===== */
 (function(){
   const d=new Date().toISOString().split('T')[0];
   from.value=d; to.value=d;
@@ -141,35 +132,38 @@ async function loadKas(){
 function tsStart(d){return d+"T00:00:00"}
 function tsEnd(d){return d+"T23:59:59"}
 
-/* ===== LOAD DATA ===== */
 async function loadData(){
   showSpinner(true);
   DATA_TOTAL=[]; DATA_DETAIL=[];
+  const jenisFilter=filterJenis.value;
 
   const f=from.value,t=to.value;
-
-  const {data:jual=[], error:errJual}=await db.from('penjualan')
-    .select('*').gte('tgl',tsStart(f)).lte('tgl',tsEnd(t));
-  if(errJual) console.error(errJual);
-
-  const {data:keluar=[], error:errKeluar}=await db.from('pengeluaran')
-    .select('*').gte('tgl',tsStart(f)).lte('tgl',tsEnd(t));
-  if(errKeluar) console.error(errKeluar);
+  const {data:jual=[]}=await db.from('penjualan').select('*').gte('tgl',tsStart(f)).lte('tgl',tsEnd(t));
+  const {data:keluar=[]}=await db.from('pengeluaran').select('*').gte('tgl',tsStart(f)).lte('tgl',tsEnd(t));
 
   const map={};
   tableDetail.querySelector('tbody').innerHTML='';
 
-  // detail penjualan
-  jual.forEach(r=>{
-    const d=r.tgl.split('T')[0];
-    map[d]=map[d]||{jual:0,keluar:0};
-    map[d].jual+=Number(r.total);
+  if(jenisFilter!=='pengeluaran'){
+    jual.forEach(r=>{
+      const d=r.tgl.split('T')[0];
+      map[d]=map[d]||{jual:0,keluar:0};
+      map[d].jual+=Number(r.total);
 
-    DATA_DETAIL.push({tanggal:new Date(r.tgl).toLocaleString(), jenis:'Penjualan', nama:r.nama_barang, jumlah:r.jumlah, harga:r.total/r.jumlah, total:r.total});
+      DATA_DETAIL.push({
+        tanggal:new Date(r.tgl).toLocaleString(),
+        nama_kasir:r.nama_kasir||'-',
+        jenis:'Penjualan',
+        nama:r.nama_barang,
+        jumlah:r.jumlah,
+        harga:r.total/r.jumlah,
+        total:r.total
+      });
 
-    tableDetail.querySelector('tbody').innerHTML+=`
+      tableDetail.querySelector('tbody').innerHTML+=`
       <tr>
         <td>${new Date(r.tgl).toLocaleString()}</td>
+        <td>${r.nama_kasir||'-'}</td>
         <td>Penjualan</td>
         <td>${r.nama_barang}</td>
         <td>${r.jumlah}</td>
@@ -177,19 +171,29 @@ async function loadData(){
         <td>${rupiah(r.total)}</td>
         <td><button class="danger" onclick="hapusDetail(${r.id},'penjualan')">Hapus</button></td>
       </tr>`;
-  });
+    });
+  }
 
-  // detail pengeluaran
-  keluar.forEach(r=>{
-    const d=r.tgl.split('T')[0];
-    map[d]=map[d]||{jual:0,keluar:0};
-    map[d].keluar+=Number(r.jumlah);
+  if(jenisFilter!=='penjualan'){
+    keluar.forEach(r=>{
+      const d=r.tgl.split('T')[0];
+      map[d]=map[d]||{jual:0,keluar:0};
+      map[d].keluar+=Number(r.jumlah);
 
-    DATA_DETAIL.push({tanggal:new Date(r.tgl).toLocaleString(), jenis:'Pengeluaran', nama:r.deskripsi, jumlah:'-', harga:r.jumlah, total:r.jumlah});
+      DATA_DETAIL.push({
+        tanggal:new Date(r.tgl).toLocaleString(),
+        nama_kasir:r.nama_kasir||'-',
+        jenis:'Pengeluaran',
+        nama:r.deskripsi,
+        jumlah:'-',
+        harga:r.jumlah,
+        total:r.jumlah
+      });
 
-    tableDetail.querySelector('tbody').innerHTML+=`
+      tableDetail.querySelector('tbody').innerHTML+=`
       <tr>
         <td>${new Date(r.tgl).toLocaleString()}</td>
+        <td>${r.nama_kasir||'-'}</td>
         <td>Pengeluaran</td>
         <td>${r.deskripsi}</td>
         <td>-</td>
@@ -197,28 +201,27 @@ async function loadData(){
         <td>${rupiah(r.jumlah)}</td>
         <td><button class="danger" onclick="hapusDetail(${r.id},'pengeluaran')">Hapus</button></td>
       </tr>`;
-  });
+    });
+  }
 
-  // tabel total per tanggal
   tableTotal.querySelector('tbody').innerHTML='';
   Object.keys(map).sort().forEach(d=>{
-    const subtotal = map[d].jual - map[d].keluar;
-    DATA_TOTAL.push({tanggal:d, total_penjualan:map[d].jual, total_pengeluaran:map[d].keluar, subtotal});
+    const subtotal=map[d].jual-map[d].keluar;
+    DATA_TOTAL.push({tanggal:d,total_penjualan:map[d].jual,total_pengeluaran:map[d].keluar,subtotal});
     tableTotal.querySelector('tbody').innerHTML+=`
-      <tr>
-        <td>${d}</td>
-        <td>${rupiah(map[d].jual)}</td>
-        <td>${rupiah(map[d].keluar)}</td>
-        <td>${rupiah(subtotal)}</td>
-        <td><button class="danger" onclick="hapusTotal('${d}')">Hapus</button></td>
-      </tr>`;
+    <tr>
+      <td>${d}</td>
+      <td>${rupiah(map[d].jual)}</td>
+      <td>${rupiah(map[d].keluar)}</td>
+      <td>${rupiah(subtotal)}</td>
+      <td><button class="danger" onclick="hapusTotal('${d}')">Hapus</button></td>
+    </tr>`;
   });
 
   showSpinner(false);
   loadKas();
 }
 
-/* ===== DOWNLOAD XLS ===== */
 function downloadXLS(){
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(DATA_TOTAL),'TOTAL');
@@ -226,50 +229,33 @@ function downloadXLS(){
   XLSX.writeFile(wb,'laporan_penjualan.xlsx');
 }
 
-/* ===== HAPUS DETAIL ===== */
-async function hapusDetail(id, jenis){
-  if(!confirm("Hapus transaksi ini?")) return;
-  try{
-    const { error } = await db.from(jenis==='penjualan'?'penjualan':'pengeluaran')
-      .delete().eq('id', id);
-    if(error) return alert(error.message);
-    loadData();
-  } catch(e){ console.error(e); }
+async function hapusDetail(id,jenis){
+  if(!confirm("Hapus transaksi ini?"))return;
+  await db.from(jenis).delete().eq('id',id);
+  loadData();
 }
 
-/* ===== HAPUS TOTAL PER TANGGAL ===== */
 async function hapusTotal(tgl){
-  if(!confirm(`Hapus semua transaksi tanggal ${tgl}?`)) return;
-  try{
-    const { error:errJual } = await db.from('penjualan')
-      .delete().gte('tgl', tgl+'T00:00:00').lte('tgl', tgl+'T23:59:59');
-    const { error:errKeluar } = await db.from('pengeluaran')
-      .delete().gte('tgl', tgl+'T00:00:00').lte('tgl', tgl+'T23:59:59');
-    if(errJual||errKeluar) return alert(errJual?.message || errKeluar?.message);
-    loadData();
-  } catch(e){ console.error(e); }
+  if(!confirm(`Hapus semua transaksi tanggal ${tgl}?`))return;
+  await db.from('penjualan').delete().gte('tgl',tgl+'T00:00:00').lte('tgl',tgl+'T23:59:59');
+  await db.from('pengeluaran').delete().gte('tgl',tgl+'T00:00:00').lte('tgl',tgl+'T23:59:59');
+  loadData();
 }
 
-/* ===== HAPUS TRANSAKSI > 3 BULAN ATAU SEMUA ===== */
 async function hapusTransaksi(type){
-  if(!confirm(`Hapus transaksi ${type==='all'?'semua':'lebih dari 3 bulan'}?`)) return;
-  try{
-    let filter='';
-    if(type==='old'){
-      const tglLimit = new Date();
-      tglLimit.setMonth(tglLimit.getMonth()-3);
-      filter = tglLimit.toISOString().split('T')[0]+'T00:00:00';
-      await db.from('penjualan').delete().lt('tgl', filter);
-      await db.from('pengeluaran').delete().lt('tgl', filter);
-    }else{
-      await db.from('penjualan').delete();
-      await db.from('pengeluaran').delete();
-    }
-    loadData();
-  } catch(e){ console.error(e); }
+  if(!confirm("Lanjutkan?"))return;
+  if(type==='old'){
+    const d=new Date(); d.setMonth(d.getMonth()-3);
+    const f=d.toISOString().split('T')[0]+'T00:00:00';
+    await db.from('penjualan').delete().lt('tgl',f);
+    await db.from('pengeluaran').delete().lt('tgl',f);
+  }else{
+    await db.from('penjualan').delete();
+    await db.from('pengeluaran').delete();
+  }
+  loadData();
 }
 
-// LOAD AWAL
 loadKas();
 loadData();
 </script>
