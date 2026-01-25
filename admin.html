@@ -227,10 +227,10 @@ button.danger:hover{background:#c0392b;}
 <div class="modal" id="modalLogin" style="display:flex;">
   <div class="modal-box">
     <h4>Login Admin</h4>
-    <a href="index.html"><button>kembali</button></a>
+    
     <input type="text" id="loginUsername" placeholder="Username">
     <input type="password" id="loginPassword" placeholder="Password">
-    <button onclick="loginAdmin()">Login</button>
+    <button onclick="loginAdmin()">Login</button><a href="index.html"><button>kembali</button></a>
     <p id="loginError" style="color:var(--danger); margin-top:10px; font-size:14px; display:none;"></p>
   </div>
 </div>
@@ -521,4 +521,5 @@ function showYesNoModal(title, msg, yesCallback=null){
 
 </body>
 </html>
+
 
