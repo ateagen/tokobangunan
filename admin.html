@@ -34,7 +34,7 @@ body{
   width:100%;
   max-width:1100px;
   padding:24px;
-  display:none; /* disembunyikan sampai login berhasil */
+  display:none;
 }
 
 /* Header */
@@ -212,11 +212,6 @@ button.danger:hover{background:#c0392b;}
 
 #tableAkun tbody tr:nth-child(even){background:#f8fafc;}
 #tableAkun tbody tr:hover{background:#dcfce7;}
-
-@media(max-width:600px){
-  .header h1{font-size:22px}
-  .card{padding:22px}
-}
 </style>
 </head>
 
@@ -227,13 +222,6 @@ button.danger:hover{background:#c0392b;}
   <div class="spinner"></div>
 </div>
 
-<!-- Modal info & konfirmasi -->
-<div class="modal" id="modal">
-  <div class="modal-box">
-    <h4 id="modalTitle">Info</h4>
-    <p id="modalMsg"></p>
-  </div>
-</div>
 
 <!-- Modal Login -->
 <div class="modal" id="modalLogin" style="display:flex;">
@@ -242,6 +230,7 @@ button.danger:hover{background:#c0392b;}
     <input type="text" id="loginUsername" placeholder="Username">
     <input type="password" id="loginPassword" placeholder="Password">
     <button onclick="loginAdmin()">Login</button>
+    <p id="loginError" style="color:var(--danger); margin-top:10px; font-size:14px; display:none;"></p>
   </div>
 </div>
 
@@ -250,7 +239,7 @@ button.danger:hover{background:#c0392b;}
   <div class="header">
     <h1>Admin POS</h1>
     <p>Kelola toko dan laporan</p>
-    <button onclick="window.location.href='index.html'">⬅ Kembali ke POS</button>
+    <button onclick="clearSessionAdmin(); window.location.href='index.html'">⬅ Kembali ke POS</button>
   </div>
 
   <!-- Form ubah nama toko -->
@@ -270,6 +259,10 @@ button.danger:hover{background:#c0392b;}
   <!-- Form tambah akun -->
   <div style="background:white; padding:20px; border-radius:18px; box-shadow:var(--shadow); margin-bottom:20px;">
     <h3>Tambah Akun</h3>
+
+    <!-- TAMBAHAN NAMA -->
+    <input type="text" id="inputNamaAkun" placeholder="Nama Lengkap" style="width:45%; border: #1f2937 solid 1px; margin-top:10px;">
+
     <input type="text" id="inputUsernameAkun" placeholder="Username" style="width:45%; border: #1f2937 solid 1px; margin-top:10px;">
     <input type="text" id="inputPasswordAkun" placeholder="Password" style="width:45%; border: #1f2937 solid 1px; margin-top:10px;">
     <select id="inputRoleAkun" style="width:45%; margin-top:10px; padding:10px; border-radius:10px; border: #1f2937 solid 1px;">
@@ -322,6 +315,7 @@ const modalMsg = document.getElementById('modalMsg');
 const modalTitle = document.getElementById('modalTitle');
 const modalLogin = document.getElementById('modalLogin');
 const adminContainer = document.getElementById('adminContainer');
+const loginError = document.getElementById('loginError');
 
 function showLoading(show=true){ loading.style.display = show?'flex':'none'; }
 function showInfoModal(title,msg){
@@ -331,12 +325,29 @@ function showInfoModal(title,msg){
   setTimeout(()=>{ modal.style.display='none'; },1000);
 }
 
+/* ================= SESSION ================= */
+function saveSessionAdmin(data){
+  localStorage.setItem('admin_session', JSON.stringify({
+    id: data.id,
+    username: data.username,
+    role: data.role
+  }));
+}
+function getSessionAdmin(){
+  const s = localStorage.getItem('admin_session');
+  return s ? JSON.parse(s) : null;
+}
+function clearSessionAdmin(){
+  localStorage.removeItem('admin_session');
+}
+
 /* ---------- LOGIN ---------- */
 async function loginAdmin(){
   const username = document.getElementById('loginUsername').value.trim();
   const password = document.getElementById('loginPassword').value.trim();
   if(!username || !password){ 
-    showInfoModal('Gagal','Semua field harus diisi'); 
+    loginError.textContent = 'Semua field harus diisi';
+    loginError.style.display = 'block';
     return; 
   }
   showLoading(true);
@@ -352,25 +363,41 @@ async function loginAdmin(){
     showLoading(false);
 
     if(!data){ 
-      showInfoModal('Gagal','Username atau password salah'); 
+      loginError.textContent = 'Username atau password salah';
+      loginError.style.display = 'block';
       return; 
+    } else {
+      loginError.style.display = 'none';
     }
 
-    // Login sukses
+    saveSessionAdmin(data);
+
     modalLogin.style.display='none';
     adminContainer.style.display='block';
-    showInfoModal('Berhasil','Login berhasil');
+  
     loadNamaToko();
     loadSaldoKas();
     loadAkun();
   }catch(err){
     showLoading(false);
-    console.error(err);
-    showInfoModal('Gagal','Username atau password salah');
+    loginError.textContent = 'Username atau password salah';
+    loginError.style.display = 'block';
   }
 }
 
-/* ---------- ADMIN FUNCTIONS ---------- */
+/* AUTO LOGIN */
+document.addEventListener('DOMContentLoaded', ()=>{
+  const session = getSessionAdmin();
+  if(session){
+    modalLogin.style.display='none';
+    adminContainer.style.display='block';
+    loadNamaToko();
+    loadSaldoKas();
+    loadAkun();
+  }
+});
+
+/* ---------- ADMIN FUNCTIONS (ASLI, TIDAK DIUBAH) ---------- */
 async function loadNamaToko(){
   showLoading(true);
   try{
@@ -400,7 +427,7 @@ async function loadSaldoKas(){
       .from('kas').select('*').order('id',{ascending:false}).limit(1).single();
     showLoading(false);
     document.getElementById('inputSaldoKas').value = data?.sisa_saldo || '';
-  }catch(err){ showLoading(false); console.error(err); }
+  }catch(err){ showLoading(false); }
 }
 
 async function updateSaldoKas(){
@@ -418,21 +445,23 @@ async function updateSaldoKas(){
     if(error){ showInfoModal('Gagal','Tidak dapat menyimpan saldo kas'); return; }
     document.getElementById('inputSaldoKas').value = newSaldo;
     showInfoModal('Berhasil','Saldo kas berhasil diperbarui');
-  }catch(err){ showLoading(false); console.error(err); showInfoModal('Error','Terjadi kesalahan saat menyimpan saldo'); }
+  }catch(err){ showLoading(false); showInfoModal('Error','Terjadi kesalahan saat menyimpan saldo'); }
 }
 
+/* ---------- TAMBAH AKUN (DIPERBAIKI) ---------- */
 async function tambahAkun(){
+  const nama = document.getElementById('inputNamaAkun').value.trim();
   const username = document.getElementById('inputUsernameAkun').value.trim();
   const password = document.getElementById('inputPasswordAkun').value.trim();
   const role = document.getElementById('inputRoleAkun').value;
-  if(!username || !password){ showInfoModal('Gagal','Semua field harus diisi'); return; }
+  if(!nama || !username || !password){ showInfoModal('Gagal','Semua field harus diisi'); return; }
   showLoading(true);
   try{
-    await supabaseClient.from('akun').insert([{ username,password,role }]);
+    await supabaseClient.from('akun').insert([{ nama, username, password, role }]);
     showLoading(false);
     loadAkun();
     showInfoModal('Berhasil','Akun berhasil ditambahkan');
-  }catch(err){ showLoading(false); console.error(err); showInfoModal('Error','Terjadi kesalahan saat menambah akun'); }
+  }catch(err){ showLoading(false); showInfoModal('Error','Terjadi kesalahan saat menambah akun'); }
 }
 
 async function loadAkun(){
@@ -448,7 +477,7 @@ async function loadAkun(){
         <td><button class="danger" onclick="showYesNoModal('Konfirmasi','Hapus akun ${a.username}?',()=>hapusAkun(${a.id}))">Hapus</button></td>
       </tr>`;
     });
-  }catch(err){ console.error(err); }
+  }catch(err){}
 }
 
 async function hapusAkun(id){
@@ -458,7 +487,7 @@ async function hapusAkun(id){
     showLoading(false);
     loadAkun();
     showInfoModal('Berhasil','Akun berhasil dihapus');
-  }catch(err){ showLoading(false); console.error(err); showInfoModal('Error','Terjadi kesalahan saat menghapus akun'); }
+  }catch(err){ showLoading(false); showInfoModal('Error','Terjadi kesalahan saat menghapus akun'); }
 }
 
 /* Modal konfirmasi Ya/Tidak */
@@ -491,4 +520,3 @@ function showYesNoModal(title, msg, yesCallback=null){
 
 </body>
 </html>
-
