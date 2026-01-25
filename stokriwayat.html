@@ -16,6 +16,8 @@
   --text:#134e3a;
   --white:#ffffff;
   --border:#d1fae5;
+  --danger:#fee2e2;
+  --danger-text:#991b1b;
 }
 *{box-sizing:border-box}
 body{
@@ -33,6 +35,8 @@ header{
   align-items:center;
 }
 header h2{margin:0;font-size:18px}
+
+/* ================= BUTTON ================= */
 button{
   background:white;
   color:var(--green-dark);
@@ -40,7 +44,31 @@ button{
   padding:8px 14px;
   border-radius:8px;
   cursor:pointer;
+  transition:.2s ease;
 }
+button:hover{
+  background:var(--green-dark);
+  color:white;
+  transform:translateY(-1px);
+}
+button:active{
+  transform:translateY(0);
+}
+
+/* tombol bahaya */
+button.danger,
+button[style*="fee2e2"]{
+  background:var(--danger);
+  color:var(--danger-text);
+  border:1px solid #fca5a5;
+}
+button.danger:hover,
+button[style*="fee2e2"]:hover{
+  background:#fecaca;
+  color:#7f1d1d;
+}
+
+/* ================= LAYOUT ================= */
 .container{
   padding:16px;
   max-width:1200px;
@@ -55,6 +83,13 @@ button{
   border-radius:10px;
   border:1px solid var(--border);
 }
+.search input:focus{
+  outline:none;
+  border-color:var(--green);
+  box-shadow:0 0 0 2px rgba(79,209,165,.2);
+}
+
+/* ================= CARD ================= */
 .card{
   background:var(--white);
   border-radius:12px;
@@ -67,6 +102,8 @@ button{
   background:var(--green-soft);
   font-size:15px;
 }
+
+/* ================= TABLE ================= */
 table{
   width:100%;
   border-collapse:collapse;
@@ -77,15 +114,33 @@ th,td{
   font-size:14px;
   vertical-align:top;
 }
+
+/* header hover */
 th{
   background:var(--green-soft);
   text-align:left;
+  transition:.15s ease;
 }
+th:hover{
+  background:#d1fae5;
+}
+
+/* row hover */
+tbody tr{
+  transition:.15s ease;
+}
+tbody tr:hover{
+  background:#ecfdf5;
+}
+
+/* empty */
 .empty{
   text-align:center;
   padding:16px;
   opacity:.6;
 }
+
+/* ================= SPINNER ================= */
 .spinner{
   position:fixed;
   inset:0;
@@ -104,6 +159,8 @@ th{
   animation:spin 1s linear infinite;
 }
 @keyframes spin{to{transform:rotate(360deg)}}
+
+/* ================= BADGE ================= */
 .badge{
   padding:3px 8px;
   border-radius:999px;
@@ -111,6 +168,7 @@ th{
   background:var(--green-soft);
   display:inline-block;
 }
+
 @media(max-width:768px){
   th,td{font-size:13px}
 }
@@ -145,6 +203,13 @@ th{
 
 <div class="card">
 <h3>Riwayat Perubahan Stok</h3>
+
+<div style="padding:10px 14px; text-align:right;">
+  <button class="danger" onclick="hapusLogDenganAuth()">
+    Hapus Semua Riwayat Log
+  </button>
+</div>
+
 <table id="logTable">
 <thead>
 <tr>
@@ -257,6 +322,39 @@ search.addEventListener('input', ()=>{
     (l.aksi||'').toLowerCase().includes(q)
   ));
 });
+
+async function hapusLogDenganAuth(){
+  const username = prompt("Masukkan username admin:");
+  if(!username) return;
+
+  const password = prompt("Masukkan password admin:");
+  if(!password) return;
+
+  spin(true);
+
+  const { data: admin, error } = await db
+    .from('admin')
+    .select('id')
+    .eq('username', username)
+    .eq('password', password)
+    .single();
+
+  if(error || !admin){
+    spin(false);
+    alert("Username atau password admin salah!");
+    return;
+  }
+
+  if(!confirm("YAKIN hapus SEMUA riwayat log stok? Tindakan ini tidak bisa dibatalkan!")){
+    spin(false);
+    return;
+  }
+
+  await db.from('log_stok').delete();
+
+  alert("Semua riwayat log stok berhasil dihapus");
+  loadAll();
+}
 
 loadAll();
 </script>
