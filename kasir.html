@@ -44,59 +44,57 @@ button:hover{background:var(--green-dark)}
 table{width:100%;border-collapse:collapse;margin-top:10px}
 th,td{padding:12px;text-align:center;border-bottom:1px solid #eee}
 th{background:var(--green-soft)}
-tr.stok-row{cursor:pointer;transition:.2s}
-tr.stok-row:hover{background:var(--green-soft)}
-.qty input{width:60px;text-align:center}
+tr.stok-row{cursor:pointer}
 .loading,.modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center}
 .loading{background:rgba(255,255,255,.7);z-index:100}
 .modal{background:rgba(0,0,0,.45);z-index:200}
 .modal-box{
   background:white;padding:20px;border-radius:16px;
-  max-width:420px;width:90%;text-align:center;
+  max-width:600px;width:90%;text-align:center;
 }
 .spinner{width:50px;height:50px;border:6px solid #d1fae5;border-top:6px solid var(--green);border-radius:50%;animation:spin 1s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
+
+@media print{
+  body *{visibility:hidden}
+  #printArea, #printArea *{visibility:visible}
+  #printArea{
+    position:absolute;
+    left:0;top:0;
+    width:220px;
+    font-family:monospace;
+    font-size:12px;
+  }
+}
 </style>
 </head>
 <body>
 
-<!-- Loading -->
+<!-- ================= LOADING ================= -->
 <div class="loading" id="loading"><div class="spinner"></div></div>
 
-<!-- Modal Kasir -->
+<!-- ================= MODAL UMUM ================= -->
 <div class="modal" id="modal">
   <div class="modal-box">
     <h3 id="modalTitle"></h3>
     <p id="modalMsg"></p>
     <div id="modalForm"></div>
-    <div style="margin-top:12px;display:flex;gap:10px;justify-content:center">
-      <button id="modalOk">OK</button>
-      <button onclick="closeModal()" style="background:#ccc;color:#000">Batal</button>
-    </div>
+    <div id="modalBtns" style="margin-top:12px;display:flex;gap:10px;justify-content:center"></div>
   </div>
 </div>
 
-<!-- Modal Login -->
-<div class="modal" id="loginModal" style="display:flex; background:rgba(0,0,0,.6); z-index:300;">
+<!-- ================= LOGIN MODAL ================= -->
+<div class="modal" id="loginModal" style="display:flex;background:rgba(0,0,0,.6);z-index:300;">
   <div class="modal-box">
     <h3>Login Kasir</h3>
-    <input id="loginUsername" placeholder="Username" style="margin-bottom:8px; width:80%;">
-    <input id="loginPassword" type="password" placeholder="Password" style="margin-bottom:8px; width:80%;">
-    <div style="margin-top:12px; display:flex; gap:10px; justify-content:center;">
-      <button onclick="login()">Login</button>
-    </div>
-    <p id="loginError" style="color:red; margin-top:8px; display:none;"></p>
+    <input id="loginUsername" placeholder="Username" style="margin-bottom:10px;width:100%;">
+    <input id="loginPassword" type="password" placeholder="Password" style="margin-bottom:10px;width:100%;">
+    <button onclick="login()" style="width:100%;">Login</button>
+    <p id="loginError" style="color:red;margin-top:10px;display:none;font-size:14px;"></p>
   </div>
 </div>
 
-<!-- Modal Info Login -->
-<div class="modal" id="loginInfoModal">
-  <div class="modal-box">
-    <h3 id="loginInfoTitle"></h3>
-    <p id="loginInfoMsg"></p>
-  </div>
-</div>
-
+<!-- ================= MAIN ================= -->
 <div class="container">
 
 <div class="header">
@@ -104,16 +102,14 @@ tr.stok-row:hover{background:var(--green-soft)}
     <h1 id="namaToko">Kasir</h1>
     <small id="jam"></small>
   </div>
-  <button onclick="location.href='index.html'">⬅ Kembali</button>
+  <button onclick="logout()">⬅ Kembali</button>
 </div>
 
 <div class="card">
   <button onclick="tambahPengeluaranModal()">➕ Tambah Pengeluaran</button>
   <input id="search" placeholder="Cari barang..." oninput="loadStok()" style="margin-top:10px;">
   <table>
-    <thead>
-      <tr><th>Barang</th><th>Harga</th><th>Stok</th></tr>
-    </thead>
+    <thead><tr><th>Barang</th><th>Harga</th><th>Stok</th></tr></thead>
     <tbody id="listStok"></tbody>
   </table>
 </div>
@@ -121,9 +117,7 @@ tr.stok-row:hover{background:var(--green-soft)}
 <div class="card">
   <h3>Keranjang</h3>
   <table>
-    <thead>
-      <tr><th>Barang</th><th>Harga</th><th>Qty</th><th>Total</th><th></th></tr>
-    </thead>
+    <thead><tr><th>Barang</th><th>Harga</th><th>Qty</th><th>Total</th><th></th></tr></thead>
     <tbody id="cart"></tbody>
   </table>
 </div>
@@ -138,77 +132,84 @@ tr.stok-row:hover{background:var(--green-soft)}
 
 </div>
 
+<div id="printArea"></div>
+
 <script>
+/* ================== SESSION LOGIN ================== */
+function setLoginSession(nama){
+  sessionStorage.setItem("kasir_login","1");
+  sessionStorage.setItem("kasir_nama",nama);
+}
+function clearLoginSession(){
+  sessionStorage.removeItem("kasir_login");
+  sessionStorage.removeItem("kasir_nama");
+}
+window.addEventListener("beforeunload", clearLoginSession);
+
+/* ================== SUPABASE ================== */
 const SUPABASE_URL="https://fgoeqtyaxwccxluxdvni.supabase.co";
 const SUPABASE_ANON_KEY="sb_publishable_ZXJgBsB-sswr7qblwGMnLg_p6QaXKwP";
-const supabaseClient = supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+const supabaseClient=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 
-let keranjang=[], namaTokoText="TOKO";
-const totalEl=document.getElementById("total");
-const kembali=document.getElementById("kembali");
+/* ================== STATE ================== */
+let keranjang=[];
+let namaKasir="";
+let namaTokoText="TOKO";
 
 setInterval(()=>{jam.textContent=new Date().toLocaleString()},1000);
 
-function showLoading(v){loading.style.display=v?"flex":"none"}
-function showModal(t,m,okFn,form=""){modalTitle.textContent=t;modalMsg.textContent=m;modalForm.innerHTML=form;modal.style.display="flex";if(okFn) modalOk.onclick=okFn;}
-function closeModal(){modal.style.display="none"}
-
-function showLoginInfo(t,m){
-  loginInfoTitle.textContent=t;
-  loginInfoMsg.textContent=m;
-  loginInfoModal.style.display="flex";
-  setTimeout(()=>loginInfoModal.style.display="none",1000);
-}
-
-/* ====== Login ====== */
+/* ================== LOGIN ================== */
 async function login(){
-  const username=loginUsername.value.trim();
-  const password=loginPassword.value.trim();
+  const u=loginUsername.value.trim();
+  const p=loginPassword.value.trim();
   loginError.style.display="none";
 
-  if(!username||!password){
-    loginError.textContent="Isi username & password";
+  const {data}=await supabaseClient
+    .from("akun")
+    .select("*")
+    .eq("username",u)
+    .eq("password",p)
+    .single();
+
+  if(!data){
+    loginError.textContent="Username atau password salah";
     loginError.style.display="block";
     return;
   }
 
-  const {data,error}=await supabaseClient
-    .from("akun")
-    .select("*")
-    .eq("username",username)
-    .eq("password",password)
-    .in("role",["admin","kasir"])
-    .limit(1)
-    .single();
-
-  if(error||!data){
-    showLoginInfo("Gagal","Login gagal");
-    return;
-  }
-
-  // login berhasil
+  namaKasir=u;
+  setLoginSession(u);
   loginModal.style.display="none";
-  showLoginInfo("Berhasil","Login berhasil");
-
   loadToko();
   loadStok();
 }
 
-/* ====== Load Toko ====== */
-async function loadToko(){
-  const {data}=await supabaseClient.from("toko").select("nama").single();
-  if(data){ namaToko.textContent=data.nama; namaTokoText=data.nama }
+/* ================== AUTO LOGIN ================== */
+if(sessionStorage.getItem("kasir_login")){
+  namaKasir=sessionStorage.getItem("kasir_nama");
+  loginModal.style.display="none";
+  loadToko();
+  loadStok();
 }
 
-/* ====== Load Stok ====== */
+/* ================== LOGOUT ================== */
+function logout(){
+  clearLoginSession();
+  window.location.href="index.html";
+}
+
+/* ================== DATA ================== */
+async function loadToko(){
+  const {data}=await supabaseClient.from("toko").select("nama").single();
+  if(data){
+    namaToko.textContent=data.nama;
+    namaTokoText=data.nama;
+  }
+}
+
 async function loadStok(){
   const q=search.value||"";
-  const {data}=await supabaseClient
-    .from("stok")
-    .select("*")
-    .ilike("nama_barang","%"+q+"%")
-    .order("nama_barang");
-
+  const {data}=await supabaseClient.from("stok").select("*").ilike("nama_barang","%"+q+"%");
   listStok.innerHTML="";
   data.forEach(s=>{
     const tr=document.createElement("tr");
@@ -219,16 +220,14 @@ async function loadStok(){
   });
 }
 
-/* ====== Tambah ke Keranjang ====== */
-function tambahKeKeranjang(item){
-  if(item.jumlah<=0){if(!confirm("Stok kosong, tetap tambahkan?")) return;}
-  const ada=keranjang.find(i=>i.id===item.id);
+/* ================== KERANJANG ================== */
+function tambahKeKeranjang(i){
+  const ada=keranjang.find(x=>x.id===i.id);
   if(ada) ada.qty++;
-  else keranjang.push({...item,qty:1});
+  else keranjang.push({...i,qty:1});
   renderCart();
 }
 
-/* ====== Render Keranjang ====== */
 function renderCart(){
   cart.innerHTML="";
   keranjang.forEach((i,idx)=>{
@@ -238,7 +237,7 @@ function renderCart(){
       <td>${i.harga_jual}</td>
       <td>
         <button onclick="ubahQty(${idx},-1)">-</button>
-        <input value="${i.qty}" onchange="setQty(${idx},this.value)">
+        <input value="${i.qty}" onchange="setQty(${idx},this.value)" style="width:50px">
         <button onclick="ubahQty(${idx},1)">+</button>
       </td>
       <td>${i.qty*i.harga_jual}</td>
@@ -248,84 +247,93 @@ function renderCart(){
   hitung();
 }
 
-function ubahQty(i,n){keranjang[i].qty=Math.max(1,keranjang[i].qty+n);renderCart();}
-function setQty(i,v){keranjang[i].qty=Math.max(1,Number(v));renderCart();}
-function hapusItem(i){keranjang.splice(i,1);renderCart();}
+function ubahQty(i,n){keranjang[i].qty=Math.max(1,keranjang[i].qty+n);renderCart()}
+function setQty(i,v){keranjang[i].qty=Math.max(1,Number(v));renderCart()}
+function hapusItem(i){keranjang.splice(i,1);renderCart()}
 
-/* ====== Hitung Total ====== */
 function hitung(){
-  const total=keranjang.reduce((a,b)=>a+b.qty*b.harga_jual,0);
-  const disk=Number(diskon.value)||0;
-  const final=total-disk;
-  totalEl.textContent=final;
-  kembali.textContent=(Number(bayar.value)||0)-final;
+  const t=keranjang.reduce((a,b)=>a+b.qty*b.harga_jual,0);
+  const d=Number(diskon.value)||0;
+  total.textContent=t-d;
+  kembali.textContent=(Number(bayar.value)||0)-(t-d);
 }
 
-/* ====== Konfirmasi Bayar ====== */
+/* ================== BAYAR ================== */
 function konfirmasiBayar(){
-  if(!keranjang.length) return showModal("Gagal","Keranjang kosong",closeModal);
-  showModal("Cetak Struk","Cetak struk?",()=>{closeModal(); prosesBayar(true)},
-    `<button onclick="closeModal(); prosesBayar(false)" style="background:#ccc;color:#000">Tidak</button>`
+  if(!keranjang.length)
+    return showModal("Gagal","Keranjang kosong",
+      `<button onclick="closeModal()">OK</button>`);
+
+  showModal("Konfirmasi","Simpan transaksi?",
+    `
+    <button onclick="closeModal();prosesBayar(true)">Cetak</button>
+    <button onclick="closeModal();prosesBayar(false)">Tidak Cetak</button>
+    <button style="background:#ccc;color:#000" onclick="closeModal()">Batal</button>
+    `
   );
 }
 
-/* ====== Proses Bayar ====== */
 async function prosesBayar(cetak){
   showLoading(true);
-  let totalJual=0;
   for(const i of keranjang){
-    const itemTotal=i.qty*i.harga_jual;
-    totalJual+=itemTotal;
     await supabaseClient.from("penjualan").insert({
       nama_barang:i.nama_barang,
       jumlah:i.qty,
-      total:itemTotal
+      total:i.qty*i.harga_jual,
+      nama_kasir:namaKasir
     });
     await supabaseClient.from("stok")
-      .update({jumlah:i.jumlah-i.qty})
-      .eq("id",i.id);
-    await supabaseClient.from("log_stok").insert({
-      stok_id:i.id,
-      perubahan:-i.qty,
-      keterangan:"Terjual"
-    });
+      .update({jumlah:i.jumlah-i.qty}).eq("id",i.id);
   }
   if(cetak) cetakStruk();
-  keranjang=[];renderCart();
+  keranjang=[];
+  renderCart();
   showLoading(false);
 }
 
-/* ====== Cetak Struk RAWBT ====== */
+/* ================== STRUK ================== */
 function cetakStruk(){
-  let esc="\x1B\x40"; // init
-  esc+="\x1B\x74\x00"; // ASCII
-  esc+="\x1B\x61\x01"+namaTokoText+"\n";
-  esc+="\x1B\x61\x00";
-  esc+=new Date().toLocaleString()+"\n";
-  esc+="------------------------------\n";
-  keranjang.forEach(i=>{
-    esc+=`${i.nama_barang}\n${i.qty} x ${i.harga_jual} = ${i.qty*i.harga_jual}\n`;
-  });
-  esc+="------------------------------\n";
-  esc+="Total   : "+totalEl.textContent+"\n";
-  esc+="Diskon  : "+(diskon.value||0)+"\n";
-  esc+="Bayar   : "+(bayar.value||0)+"\n";
-  esc+="Kembali : "+kembali.textContent+"\n\n\n";
-  esc+="\x1D\x56\x00"; // cut
-  location.href="rawbt://print?text="+encodeURIComponent(esc);
+  printArea.innerHTML=`
+    <div style="text-align:center"><b>${namaTokoText}</b></div>
+    <div>${new Date().toLocaleString()}</div>
+    <div>Kasir: ${namaKasir}</div><hr>
+    ${keranjang.map(i=>`${i.nama_barang}<br>${i.qty} x ${i.harga_jual} = ${i.qty*i.harga_jual}<br>`).join("")}
+    <hr>Total: ${total.textContent}
+  `;
+  window.print();
 }
 
-/* ====== Tambah Pengeluaran Modal ====== */
+/* ================== PENGELUARAN ================== */
 function tambahPengeluaranModal(){
-  const form=`<input id="ketPengeluaran" placeholder="Keterangan" style="margin-bottom:8px;"><input id="biayaPengeluaran" type="number" placeholder="Biaya" style="margin-bottom:8px;">`;
-  showModal("Tambah Pengeluaran", "Isi keterangan & biaya", async ()=>{
-    const k=ketPengeluaran.value.trim();
-    const b=Number(biayaPengeluaran.value);
-    if(!k||b<=0){alert("Lengkapi data");return;}
-    await supabaseClient.from("pengeluaran").insert({deskripsi:k,jumlah:b});
-    closeModal();
-  }, form);
+  showModal("Tambah Pengeluaran","",
+    `<input id="ket" placeholder="Keterangan" style="width:200px">
+     <input id="biaya" type="number" placeholder="Biaya">
+     <button onclick="simpanPengeluaran()">Simpan</button>
+     <button style="background:#ccc;color:#000" onclick="closeModal()">Batal</button>`
+  );
 }
+async function simpanPengeluaran(){
+  const k=ket.value;
+  const b=Number(biaya.value);
+  if(!k||b<=0) return;
+  await supabaseClient.from("pengeluaran").insert({
+    deskripsi:k,
+    jumlah:b,
+    nama_kasir:namaKasir
+  });
+  closeModal();
+}
+
+/* ================== UTIL ================== */
+function showLoading(v){loading.style.display=v?"flex":"none"}
+function showModal(t,m,b){
+  modalTitle.textContent=t;
+  modalMsg.textContent=m;
+  modalForm.innerHTML="";
+  modalBtns.innerHTML=b;
+  modal.style.display="flex";
+}
+function closeModal(){modal.style.display="none"}
 </script>
 
 </body>
