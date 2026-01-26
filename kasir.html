@@ -276,32 +276,83 @@ function konfirmasiBayar(){
 
 async function prosesBayar(cetak){
   showLoading(true);
+
   for(const i of keranjang){
     await supabaseClient.from("penjualan").insert({
-      nama_barang:i.nama_barang,
-      jumlah:i.qty,
-      total:i.qty*i.harga_jual,
-      nama_kasir:namaKasir
+      nama_barang: i.nama_barang,
+      jumlah: i.qty,
+      total: i.qty * i.harga_jual,
+      nama_kasir: namaKasir
     });
+
     await supabaseClient.from("stok")
-      .update({jumlah:i.jumlah-i.qty}).eq("id",i.id);
+      .update({jumlah: i.jumlah - i.qty}).eq("id", i.id);
   }
+
   if(cetak) cetakStruk();
-  keranjang=[];
+
+  keranjang = [];
   renderCart();
   showLoading(false);
 }
 
-/* ================== STRUK ================== */
+/* ================== STRUK PRINT ================== */
 function cetakStruk(){
-  printArea.innerHTML=`
-    <div style="text-align:center"><b>${namaTokoText}</b></div>
-    <div>${new Date().toLocaleString()}</div>
-    <div>Kasir: ${namaKasir}</div><hr>
-    ${keranjang.map(i=>`${i.nama_barang}<br>${i.qty} x ${i.harga_jual} = ${i.qty*i.harga_jual}<br>`).join("")}
-    <hr>Total: ${total.textContent}
+  const now = new Date().toLocaleString("id-ID");
+  const resto = namaTokoText;
+
+  const diskonVal = Number(diskon.value) || 0;
+  const bayarVal = Number(bayar.value) || 0;
+  const totalSebelumDiskon = keranjang.reduce((a,b)=>a+b.qty*b.harga_jual,0);
+  const totalSetelahDiskon = totalSebelumDiskon - diskonVal;
+  const kembaliVal = bayarVal - totalSetelahDiskon;
+
+  let html = `
+    <html>
+    <head>
+      <style>
+        @page { size:58mm auto; margin:0; }
+        body { font-family: monospace; font-size:12px; }
+        .center { text-align:center; }
+        .line { border-top:1px dashed #000; margin:4px 0; }
+        .item-row { display:flex; justify-content:space-between; white-space: pre-wrap; }
+      </style>
+    </head>
+    <body>
+      <div class="center"><b>${resto}</b></div>
+      <div class="center">${now}</div>
+      <div class="center">Kasir: ${namaKasir}</div>
+      <div class="line"></div>
   `;
-  window.print();
+
+  keranjang.forEach(i=>{
+    const subtotal = i.qty * i.harga_jual;
+    let name = i.nama_barang;
+    while(name.length > 32){
+      html += `<div class="item-row"><span>${name.substring(0,32)}</span><span></span></div>`;
+      name = name.substring(32);
+    }
+    html += `<div class="item-row"><span>${name} x${i.qty}</span><span>Rp ${subtotal.toLocaleString('id-ID')}</span></div>`;
+  });
+
+  html += `
+      <div class="line"></div>
+      <div class="item-row"><span>Total Sebelum Diskon</span><span>Rp ${totalSebelumDiskon.toLocaleString('id-ID')}</span></div>
+      <div class="item-row"><span>Diskon</span><span>Rp ${diskonVal.toLocaleString('id-ID')}</span></div>
+      <div class="item-row"><b>Total</b><b>Rp ${totalSetelahDiskon.toLocaleString('id-ID')}</b></div>
+      <div class="item-row"><span>Bayar</span><span>Rp ${bayarVal.toLocaleString('id-ID')}</span></div>
+      <div class="item-row"><span>Kembali</span><span>Rp ${kembaliVal.toLocaleString('id-ID')}</span></div>
+      <div class="line"></div>
+      <div class="center">-- Terima Kasih --</div>
+    </body>
+    </html>
+  `;
+
+  const win = window.open('', '_blank', 'width=300,height=600');
+  win.document.write(html);
+  win.document.close();
+  win.print();
+  setTimeout(()=>win.close(),500);
 }
 
 /* ================== PENGELUARAN ================== */
@@ -339,4 +390,3 @@ function closeModal(){modal.style.display="none"}
 
 </body>
 </html>
-
