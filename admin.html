@@ -222,15 +222,22 @@ button.danger:hover{background:#c0392b;}
   <div class="spinner"></div>
 </div>
 
+<!-- Modal Konfirmasi & Info -->
+<div class="modal" id="modal" style="display:none;">
+  <div class="modal-box">
+    <h4 id="modalTitle"></h4>
+    <p id="modalMsg"></p>
+  </div>
+</div>
 
 <!-- Modal Login -->
 <div class="modal" id="modalLogin" style="display:flex;">
   <div class="modal-box">
     <h4>Login Admin</h4>
-    
+    <a href="index.html"><button>kembali</button></a>
     <input type="text" id="loginUsername" placeholder="Username">
     <input type="password" id="loginPassword" placeholder="Password">
-    <button onclick="loginAdmin()">Login</button><a href="index.html"><button>kembali</button></a>
+    <button onclick="loginAdmin()">Login</button>
     <p id="loginError" style="color:var(--danger); margin-top:10px; font-size:14px; display:none;"></p>
   </div>
 </div>
@@ -260,10 +267,7 @@ button.danger:hover{background:#c0392b;}
   <!-- Form tambah akun -->
   <div style="background:white; padding:20px; border-radius:18px; box-shadow:var(--shadow); margin-bottom:20px;">
     <h3>Tambah Akun</h3>
-
-    <!-- TAMBAHAN NAMA -->
     <input type="text" id="inputNamaAkun" placeholder="Nama Lengkap" style="width:45%; border: #1f2937 solid 1px; margin-top:10px;">
-
     <input type="text" id="inputUsernameAkun" placeholder="Username" style="width:45%; border: #1f2937 solid 1px; margin-top:10px;">
     <input type="text" id="inputPasswordAkun" placeholder="Password" style="width:45%; border: #1f2937 solid 1px; margin-top:10px;">
     <select id="inputRoleAkun" style="width:45%; margin-top:10px; padding:10px; border-radius:10px; border: #1f2937 solid 1px;">
@@ -312,93 +316,44 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const loading = document.getElementById('loading');
 const modal = document.getElementById('modal');
-const modalMsg = document.getElementById('modalMsg');
 const modalTitle = document.getElementById('modalTitle');
+const modalMsg = document.getElementById('modalMsg');
 const modalLogin = document.getElementById('modalLogin');
 const adminContainer = document.getElementById('adminContainer');
 const loginError = document.getElementById('loginError');
 
 function showLoading(show=true){ loading.style.display = show?'flex':'none'; }
-function showInfoModal(title,msg){
-  modalTitle.textContent = title;
-  modalMsg.textContent = msg;
-  modal.style.display='flex';
-  setTimeout(()=>{ modal.style.display='none'; },1000);
-}
 
 /* ================= SESSION ================= */
-function saveSessionAdmin(data){
-  localStorage.setItem('admin_session', JSON.stringify({
-    id: data.id,
-    username: data.username,
-    role: data.role
-  }));
-}
-function getSessionAdmin(){
-  const s = localStorage.getItem('admin_session');
-  return s ? JSON.parse(s) : null;
-}
-function clearSessionAdmin(){
-  localStorage.removeItem('admin_session');
-}
+function saveSessionAdmin(data){ localStorage.setItem('admin_session', JSON.stringify({id: data.id, username: data.username, role: data.role})); }
+function getSessionAdmin(){ const s = localStorage.getItem('admin_session'); return s ? JSON.parse(s) : null; }
+function clearSessionAdmin(){ localStorage.removeItem('admin_session'); }
 
 /* ---------- LOGIN ---------- */
 async function loginAdmin(){
   const username = document.getElementById('loginUsername').value.trim();
   const password = document.getElementById('loginPassword').value.trim();
-  if(!username || !password){ 
-    loginError.textContent = 'Semua field harus diisi';
-    loginError.style.display = 'block';
-    return; 
-  }
+  if(!username || !password){ loginError.textContent='Semua field harus diisi'; loginError.style.display='block'; return; }
   showLoading(true);
   try{
-    const { data } = await supabaseClient.from('akun')
-      .select('*')
-      .eq('username',username)
-      .eq('password',password)
-      .eq('role','admin')
-      .limit(1)
-      .single();
-
+    const { data } = await supabaseClient.from('akun').select('*').eq('username',username).eq('password',password).eq('role','admin').limit(1).single();
     showLoading(false);
-
-    if(!data){ 
-      loginError.textContent = 'Username atau password salah';
-      loginError.style.display = 'block';
-      return; 
-    } else {
-      loginError.style.display = 'none';
-    }
-
+    if(!data){ loginError.textContent='Username atau password salah'; loginError.style.display='block'; return; }
+    loginError.style.display='none';
     saveSessionAdmin(data);
-
     modalLogin.style.display='none';
     adminContainer.style.display='block';
-  
-    loadNamaToko();
-    loadSaldoKas();
-    loadAkun();
-  }catch(err){
-    showLoading(false);
-    loginError.textContent = 'Username atau password salah';
-    loginError.style.display = 'block';
-  }
+    loadNamaToko(); loadSaldoKas(); loadAkun();
+  }catch(err){ showLoading(false); loginError.textContent='Username atau password salah'; loginError.style.display='block'; }
 }
 
 /* AUTO LOGIN */
 document.addEventListener('DOMContentLoaded', ()=>{
   const session = getSessionAdmin();
-  if(session){
-    modalLogin.style.display='none';
-    adminContainer.style.display='block';
-    loadNamaToko();
-    loadSaldoKas();
-    loadAkun();
-  }
+  if(session){ modalLogin.style.display='none'; adminContainer.style.display='block'; loadNamaToko(); loadSaldoKas(); loadAkun(); }
 });
 
-/* ---------- ADMIN FUNCTIONS (ASLI, TIDAK DIUBAH) ---------- */
+/* ---------- ADMIN FUNCTIONS ---------- */
 async function loadNamaToko(){
   showLoading(true);
   try{
@@ -424,8 +379,7 @@ async function updateNamaToko(){
 async function loadSaldoKas(){
   showLoading(true);
   try{
-    const { data, error } = await supabaseClient
-      .from('kas').select('*').order('id',{ascending:false}).limit(1).single();
+    const { data, error } = await supabaseClient.from('kas').select('*').order('id',{ascending:false}).limit(1).single();
     showLoading(false);
     document.getElementById('inputSaldoKas').value = data?.sisa_saldo || '';
   }catch(err){ showLoading(false); }
@@ -436,12 +390,9 @@ async function updateSaldoKas(){
   if(isNaN(newSaldo)){ showInfoModal('Gagal','Saldo tidak valid'); return; }
   showLoading(true);
   try{
-    const { data: latestKas } = await supabaseClient
-      .from('kas').select('*').order('id',{ascending:false}).limit(1).single();
+    const { data: latestKas } = await supabaseClient.from('kas').select('*').order('id',{ascending:false}).limit(1).single();
     if(!latestKas){ showLoading(false); showInfoModal('Gagal','Data kas tidak ditemukan'); return; }
-    const { error } = await supabaseClient.from('kas')
-      .update({ sisa_saldo:newSaldo, tgl:new Date().toISOString() })
-      .eq('id',latestKas.id);
+    const { error } = await supabaseClient.from('kas').update({ sisa_saldo:newSaldo, tgl:new Date().toISOString() }).eq('id',latestKas.id);
     showLoading(false);
     if(error){ showInfoModal('Gagal','Tidak dapat menyimpan saldo kas'); return; }
     document.getElementById('inputSaldoKas').value = newSaldo;
@@ -449,7 +400,7 @@ async function updateSaldoKas(){
   }catch(err){ showLoading(false); showInfoModal('Error','Terjadi kesalahan saat menyimpan saldo'); }
 }
 
-/* ---------- TAMBAH AKUN (DIPERBAIKI) ---------- */
+/* ---------- TAMBAH AKUN ---------- */
 async function tambahAkun(){
   const nama = document.getElementById('inputNamaAkun').value.trim();
   const username = document.getElementById('inputUsernameAkun').value.trim();
@@ -491,35 +442,41 @@ async function hapusAkun(id){
   }catch(err){ showLoading(false); showInfoModal('Error','Terjadi kesalahan saat menghapus akun'); }
 }
 
-/* Modal konfirmasi Ya/Tidak */
+/* ---------- MODAL KONFIRMASI YA/TIDAK ---------- */
 function showYesNoModal(title, msg, yesCallback=null){
   const modalBox = modal.querySelector('.modal-box');
   modalBox.querySelectorAll('.yesno-btn')?.forEach(b=>b.remove());
   modalTitle.textContent = title;
   modalMsg.textContent = msg;
-  modal.style.display='flex';
 
   const yesBtn = document.createElement('button');
-  yesBtn.textContent='Ya';
-  yesBtn.className='yesno-btn';
-  yesBtn.style.marginTop='10px';
-  yesBtn.style.marginRight='10px';
-  yesBtn.onclick = async ()=>{
-    modalBox.querySelectorAll('.yesno-btn').forEach(b=>b.remove());
-    if(yesCallback) await yesCallback();
-  };
+  yesBtn.textContent = 'Ya';
+  yesBtn.className = 'yesno-btn';
+  yesBtn.style.background = 'var(--green)';
+  yesBtn.style.color = 'var(--white)';
+  yesBtn.style.margin = '10px 5px 0 0';
+  yesBtn.style.width = '45%';
+  yesBtn.style.padding = '10px';
+  yesBtn.style.borderRadius = '10px';
+  yesBtn.onclick = async () => { modal.style.display='none'; if(yesCallback) await yesCallback(); };
   modalBox.appendChild(yesBtn);
 
   const noBtn = document.createElement('button');
-  noBtn.textContent='Tidak';
-  noBtn.className='yesno-btn';
-  noBtn.style.marginTop='10px';
-  noBtn.onclick = ()=> modal.style.display='none';
+  noBtn.textContent = 'Tidak';
+  noBtn.className = 'yesno-btn';
+  noBtn.style.background = 'var(--danger)';
+  noBtn.style.color = 'var(--white)';
+  noBtn.style.margin = '10px 0 0 0';
+  noBtn.style.width = '45%';
+  noBtn.style.padding = '10px';
+  noBtn.style.borderRadius = '10px';
+  noBtn.onclick = () => { modal.style.display='none'; };
   modalBox.appendChild(noBtn);
+
+  modal.style.display='flex';
 }
+
 </script>
 
 </body>
 </html>
-
-
