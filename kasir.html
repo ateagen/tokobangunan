@@ -259,21 +259,48 @@ function hitung(){
   kembali.textContent=(Number(bayar.value)||0)-(t-d);
 }
 
-/* ================== BAYAR ================== */
+/* ================== BAYAR & PREVIEW STRUK ================== */
 function konfirmasiBayar(){
   if(!keranjang.length)
-    return showModal("Gagal","Keranjang kosong",
-      `<button onclick="closeModal()">OK</button>`);
+    return showModal("Gagal","Keranjang kosong","<button onclick='closeModal()'>OK</button>");
 
-  showModal("Konfirmasi","Simpan transaksi?",
-    `
-    <button onclick="closeModal();prosesBayar(true)">Cetak</button>
-    <button onclick="closeModal();prosesBayar(false)">Tidak Cetak</button>
-    <button style="background:#ccc;color:#000" onclick="closeModal()">Batal</button>
-    `
-  );
+  const now = new Date().toLocaleString("id-ID");
+  let previewHtml = `<div style="font-family:monospace; font-size:10px; text-align:left;">`;
+  previewHtml += `<div style="text-align:center;"><b>${namaTokoText}</b></div>`;
+  previewHtml += `<div>Tanggal: ${now}</div>`;
+  previewHtml += `<div>Kasir: ${namaKasir}</div>`;
+  previewHtml += `<div>-----------------------------</div>`;
+
+  keranjang.forEach(i=>{
+    const subtotal = i.qty * i.harga_jual;
+    previewHtml += `${i.nama_barang} (${i.harga_jual}/pcs x ${i.qty}) Rp ${subtotal.toLocaleString('id-ID')}<br>`;
+  });
+
+  const totalSebelumDiskon = keranjang.reduce((a,b)=>a+b.qty*b.harga_jual,0);
+  const diskonVal = Number(diskon.value) || 0;
+  const totalSetelahDiskon = totalSebelumDiskon - diskonVal;
+  const bayarVal = Number(bayar.value) || 0;
+  const kembaliVal = bayarVal - totalSetelahDiskon;
+
+  previewHtml += `-----------------------------<br>`;
+  previewHtml += `Total: Rp ${totalSebelumDiskon.toLocaleString('id-ID')}<br>`;
+  previewHtml += `Diskon: Rp ${diskonVal.toLocaleString('id-ID')}<br>`;
+  previewHtml += `Bayar: Rp ${bayarVal.toLocaleString('id-ID')}<br>`;
+  previewHtml += `Kembali: Rp ${kembaliVal.toLocaleString('id-ID')}<br>`;
+  previewHtml += `-----------------------------<br>`;
+  previewHtml += `<div style="text-align:center;">-- Terima Kasih --</div>`;
+  previewHtml += `</div>`;
+
+  showModal("Preview Struk","",`
+    <div id="previewStruk" style="max-height:300px; overflow-y:auto; border:1px solid #ccc; padding:10px; background:#fff;">
+      ${previewHtml}
+    </div>
+    <button onclick="closeModal();prosesBayar(true)" style="margin-top:10px;">Cetak</button>
+    <button onclick="closeModal();prosesBayar(false)" style="margin-top:10px;">Batal</button>
+  `);
 }
 
+/* ================== PROSES BAYAR ================== */
 async function prosesBayar(cetak){
   showLoading(true);
 
@@ -301,10 +328,10 @@ function cetakStruk(){
   const now = new Date().toLocaleString("id-ID");
   const resto = namaTokoText;
 
-  const diskonVal = Number(diskon.value) || 0;
-  const bayarVal = Number(bayar.value) || 0;
   const totalSebelumDiskon = keranjang.reduce((a,b)=>a+b.qty*b.harga_jual,0);
+  const diskonVal = Number(diskon.value) || 0;
   const totalSetelahDiskon = totalSebelumDiskon - diskonVal;
+  const bayarVal = Number(bayar.value) || 0;
   const kembaliVal = bayarVal - totalSetelahDiskon;
 
   let html = `
@@ -312,41 +339,31 @@ function cetakStruk(){
     <head>
       <style>
         @page { size:58mm auto; margin:0; }
-        body { font-family: monospace; font-size:12px; }
+        body { font-family: monospace; font-size:10px; }
         .center { text-align:center; }
         .line { border-top:1px dashed #000; margin:4px 0; }
-        .item-row { display:flex; justify-content:space-between; white-space: pre-wrap; }
       </style>
     </head>
     <body>
       <div class="center"><b>${resto}</b></div>
-      <div class="center">${now}</div>
-      <div class="center">Kasir: ${namaKasir}</div>
+      <div>Tanggal: ${now}</div>
+      <div>Kasir: ${namaKasir}</div>
       <div class="line"></div>
   `;
 
   keranjang.forEach(i=>{
     const subtotal = i.qty * i.harga_jual;
-    let name = i.nama_barang;
-    while(name.length > 32){
-      html += `<div class="item-row"><span>${name.substring(0,32)}</span><span></span></div>`;
-      name = name.substring(32);
-    }
-    html += `<div class="item-row"><span>${name} x${i.qty}</span><span>Rp ${subtotal.toLocaleString('id-ID')}</span></div>`;
+    html += `${i.nama_barang} (${i.harga_jual}/pcs x ${i.qty}) Rp ${subtotal.toLocaleString('id-ID')}<br>`;
   });
 
-  html += `
-      <div class="line"></div>
-      <div class="item-row"><span>Total Sebelum Diskon</span><span>Rp ${totalSebelumDiskon.toLocaleString('id-ID')}</span></div>
-      <div class="item-row"><span>Diskon</span><span>Rp ${diskonVal.toLocaleString('id-ID')}</span></div>
-      <div class="item-row"><b>Total</b><b>Rp ${totalSetelahDiskon.toLocaleString('id-ID')}</b></div>
-      <div class="item-row"><span>Bayar</span><span>Rp ${bayarVal.toLocaleString('id-ID')}</span></div>
-      <div class="item-row"><span>Kembali</span><span>Rp ${kembaliVal.toLocaleString('id-ID')}</span></div>
-      <div class="line"></div>
-      <div class="center">-- Terima Kasih --</div>
-    </body>
-    </html>
-  `;
+  html += `<div class="line"></div>`;
+  html += `Total: Rp ${totalSebelumDiskon.toLocaleString('id-ID')}<br>`;
+  html += `Diskon: Rp ${diskonVal.toLocaleString('id-ID')}<br>`;
+  html += `Bayar: Rp ${bayarVal.toLocaleString('id-ID')}<br>`;
+  html += `Kembali: Rp ${kembaliVal.toLocaleString('id-ID')}<br>`;
+  html += `<div class="line"></div>`;
+  html += `<div class="center">-- Terima Kasih --</div>`;
+  html += `</body></html>`;
 
   const win = window.open('', '_blank', 'width=300,height=600');
   win.document.write(html);
