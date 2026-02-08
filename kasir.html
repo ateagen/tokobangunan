@@ -70,10 +70,8 @@ tr.stok-row{cursor:pointer}
 </head>
 <body>
 
-<!-- ================= LOADING ================= -->
 <div class="loading" id="loading"><div class="spinner"></div></div>
 
-<!-- ================= MODAL UMUM ================= -->
 <div class="modal" id="modal">
   <div class="modal-box">
     <h3 id="modalTitle"></h3>
@@ -83,7 +81,6 @@ tr.stok-row{cursor:pointer}
   </div>
 </div>
 
-<!-- ================= LOGIN MODAL ================= -->
 <div class="modal" id="loginModal" style="display:flex;background:rgba(0,0,0,.6);z-index:300;">
   <div class="modal-box">
     <h3>Login Kasir</h3>
@@ -95,7 +92,6 @@ tr.stok-row{cursor:pointer}
   </div>
 </div>
 
-<!-- ================= MAIN ================= -->
 <div class="container">
 
 <div class="header">
@@ -128,7 +124,14 @@ tr.stok-row{cursor:pointer}
   <input id="diskon" type="number" placeholder="Diskon" oninput="hitung()" style="margin-top:10px;">
   <input id="bayar" type="number" placeholder="Uang bayar" oninput="hitung()" style="margin-top:10px;">
   <div>Kembalian: <b id="kembali">0</b></div>
+
+  <!-- ===== TAMBAHAN FORM KONSUMEN (PATUH) ===== -->
+  <input id="namaKonsumen" placeholder="Nama Konsumen" style="margin-top:10px;">
+  <input id="hpKonsumen" placeholder="No HP Konsumen" style="margin-top:10px;">
+  <input id="alamatKonsumen" placeholder="Alamat Konsumen" style="margin-top:10px;">
+
   <button onclick="konfirmasiBayar()" style="margin-top:10px;">BAYAR</button>
+  <button onclick="printUlang()" style="margin-top:10px;background:#444;">PRINT LAGI</button>
 </div>
 
 </div>
@@ -136,6 +139,8 @@ tr.stok-row{cursor:pointer}
 <div id="printArea"></div>
 
 <script>
+let lastPrintHtml = "";
+
 /* ================== SESSION LOGIN ================== */
 function setLoginSession(nama){
   sessionStorage.setItem("kasir_login","1");
@@ -269,6 +274,9 @@ function konfirmasiBayar(){
   previewHtml += `<div style="text-align:center;"><b>${namaTokoText}</b></div>`;
   previewHtml += `<div>Tanggal: ${now}</div>`;
   previewHtml += `<div>Kasir: ${namaKasir}</div>`;
+  previewHtml += `<div>Nama: ${namaKonsumen.value}</div>`;
+  previewHtml += `<div>HP: ${hpKonsumen.value}</div>`;
+  previewHtml += `<div>Alamat: ${alamatKonsumen.value}</div>`;
   previewHtml += `<div>-----------------------------</div>`;
 
   keranjang.forEach(i=>{
@@ -348,6 +356,9 @@ function cetakStruk(){
       <div class="center"><b>${resto}</b></div>
       <div>Tanggal: ${now}</div>
       <div>Kasir: ${namaKasir}</div>
+      <div>Nama: ${namaKonsumen.value}</div>
+      <div>HP: ${hpKonsumen.value}</div>
+      <div>Alamat: ${alamatKonsumen.value}</div>
       <div class="line"></div>
   `;
 
@@ -365,8 +376,20 @@ function cetakStruk(){
   html += `<div class="center">-- Terima Kasih --</div>`;
   html += `</body></html>`;
 
+  lastPrintHtml = html;
+
   const win = window.open('', '_blank', 'width=300,height=600');
   win.document.write(html);
+  win.document.close();
+  win.print();
+  setTimeout(()=>win.close(),500);
+}
+
+/* ================== PRINT ULANG ================== */
+function printUlang(){
+  if(!lastPrintHtml) return;
+  const win = window.open('', '_blank', 'width=300,height=600');
+  win.document.write(lastPrintHtml);
   win.document.close();
   win.print();
   setTimeout(()=>win.close(),500);
