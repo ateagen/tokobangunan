@@ -64,6 +64,8 @@ tr.stok-row{cursor:pointer}
     width:220px;
     font-family:monospace;
     font-size:12px;
+
+    
   }
 }
 </style>
@@ -332,6 +334,7 @@ async function prosesBayar(cetak){
 }
 
 /* ================== STRUK PRINT ================== */
+
 function cetakStruk(){
   const now = new Date().toLocaleString("id-ID");
   const resto = namaTokoText;
@@ -343,48 +346,88 @@ function cetakStruk(){
   const kembaliVal = bayarVal - totalSetelahDiskon;
 
   let html = `
-    <html>
-    <head>
-      <style>
-  @page { size:58mm auto; margin:0; }
+  <html>
+  <head>
+    <style>
+      @page{ size:58mm auto; margin:0; }
 
-  body {
-    font-family: monospace;
-    font-size:10px;
-    width:58mm;
-    white-space: normal;
-    word-break: break-word;
-    overflow-wrap: break-word;
-  }
+      body{
+        font-family: monospace;
+        font-size:10px;
+        width:47mm;
+        margin:0;
+        padding:4px;
+      }
 
-  .center { text-align:center; }
-  .line { border-top:1px dashed #000; margin:4px 0; }
-</style>
+      .center{
+        text-align:center;
+        word-break:break-word;
+        white-space:pre-wrap;
+      }
 
-    </head>
-    <body>
-      <div class="center"><b>${resto}</b></div>
-      <div>Tanggal: ${now}</div>
-      <div>Kasir: ${namaKasir}</div>
-      <div>Nama: ${namaKonsumen.value}</div>
-      <div>HP: ${hpKonsumen.value}</div>
-      <div>Alamat: ${alamatKonsumen.value}</div>
-      <div class="line"></div>
+      .left{
+        text-align:left;
+        word-break:break-word;
+        white-space:pre-wrap;
+      }
+
+      .line{
+        border-top:1px dashed #000;
+        margin:4px 0;
+      }
+
+      .item{
+        margin-bottom:4px;
+      }
+
+      .flex{
+        display:flex;
+        justify-content:space-between;
+      }
+    </style>
+  </head>
+  <body>
+
+    <div class="center"><b>${resto}</b></div>
+
+    <div class="line"></div>
+
+    <div class="left">Tanggal : ${now}</div>
+    <div class="left">Kasir   : ${namaKasir}</div>
+    <div class="left">Nama    : ${namaKonsumen.value}</div>
+    <div class="left">HP      : ${hpKonsumen.value}</div>
+    <div class="left">Alamat  : ${alamatKonsumen.value}</div>
+
+    <div class="line"></div>
   `;
 
   keranjang.forEach(i=>{
     const subtotal = i.qty * i.harga_jual;
-    html += `${i.nama_barang} (${i.harga_jual}/pcs x ${i.qty}) Rp ${subtotal.toLocaleString('id-ID')}<br>`;
+    html += `
+      <div class="item left">
+        ${i.nama_barang}
+        <div class="flex">
+          <span>${i.qty} x ${i.harga_jual}</span>
+          <span>${subtotal.toLocaleString('id-ID')}</span>
+        </div>
+      </div>
+    `;
   });
 
-  html += `<div class="line"></div>`;
-  html += `Total: Rp ${totalSebelumDiskon.toLocaleString('id-ID')}<br>`;
-  html += `Diskon: Rp ${diskonVal.toLocaleString('id-ID')}<br>`;
-  html += `Bayar: Rp ${bayarVal.toLocaleString('id-ID')}<br>`;
-  html += `Kembali: Rp ${kembaliVal.toLocaleString('id-ID')}<br>`;
-  html += `<div class="line"></div>`;
-  html += `<div class="center">-- Terima Kasih --</div>`;
-  html += `</body></html>`;
+  html += `
+    <div class="line"></div>
+
+    <div class="flex left"><span>Total</span><span>${totalSebelumDiskon.toLocaleString('id-ID')}</span></div>
+    <div class="flex left"><span>Diskon</span><span>${diskonVal.toLocaleString('id-ID')}</span></div>
+    <div class="flex left"><span>Bayar</span><span>${bayarVal.toLocaleString('id-ID')}</span></div>
+    <div class="flex left"><span>Kembali</span><span>${kembaliVal.toLocaleString('id-ID')}</span></div>
+
+    <div class="line"></div>
+    <div class="center">-- TERIMA KASIH --</div>
+
+  </body>
+  </html>
+  `;
 
   lastPrintHtml = html;
 
