@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -91,7 +92,7 @@ input{background:#ecfeff}
 <table>
 <thead>
 <tr>
-<th>Nama</th><th>Harga Beli</th><th>Harga Jual</th><th>Jumlah</th><th>Aksi</th>
+<th>No</th><th>Nama</th><th>Harga Beli</th><th>Harga Jual</th><th>Jumlah</th><th>Aksi</th>
 </tr>
 </thead>
 <tbody id="stokBody"></tbody>
@@ -117,17 +118,47 @@ const elHb=document.getElementById('hbInput');
 const elHj=document.getElementById('hjInput');
 const elQty=document.getElementById('qtyInput');
 
+/* INFINITE SCROLL */
+const jumlahPerLoad=50;
+let jumlahTampil=50;
+let semuaStok=[];
+let sedangTambahList=false;
+
 function spin(v){loading.style.display=v?'flex':'none'}
 function showModal(t,m){mt.textContent=t;mm.textContent=m;modal.style.display='flex'}
 function closeModal(){modal.style.display='none'}
 
 async function load(){
 spin(true);
-const {data}=await db.from('stok').select('*').eq('aktif',true).order('nama_barang');
-stokBody.innerHTML='';
-(data||[]).forEach(s=>{
-stokBody.innerHTML+=`
+
+const {data}=await db.from('stok')
+.select('*')
+.eq('aktif',true)
+.order('nama_barang');
+
+semuaStok=data||[];
+jumlahTampil=50;
+
+renderStok();
+
+spin(false);
+}
+
+function renderStok(){
+  const q=searchStok.value.toLowerCase();
+
+  const filtered=semuaStok.filter(s=>
+    (s.nama_barang||'').toLowerCase().includes(q)
+  );
+
+  const dataTampil=filtered.slice(0,jumlahTampil);
+
+  stokBody.innerHTML='';
+
+  dataTampil.forEach((s,index)=>{
+    stokBody.innerHTML+=`
 <tr>
+<td>${index+1}</td>
 <td><input data-f="nama_barang" data-id="${s.id}" value="${s.nama_barang}"></td>
 <td><input data-f="harga_beli" data-id="${s.id}" type="number" value="${s.harga_beli}"></td>
 <td><input data-f="harga_jual" data-id="${s.id}" type="number" value="${s.harga_jual}"></td>
@@ -137,17 +168,44 @@ stokBody.innerHTML+=`
 <button onclick="hapus(${s.id})">Hapus</button>
 </td>
 </tr>`;
-});
-spin(false);
+  });
 }
 
 function filterStok(){
-  const q = searchStok.value.toLowerCase();
-  [...stokBody.querySelectorAll('tr')].forEach(tr=>{
-    const nama = tr.querySelector('input[data-f="nama_barang"]').value.toLowerCase();
-    tr.style.display = nama.includes(q) ? '' : 'none';
-  });
+  jumlahTampil=50;
+  renderStok();
 }
+
+/* INFINITE SCROLL */
+window.addEventListener('scroll',()=>{
+  if(sedangTambahList)return;
+
+  const posisiScroll=
+    window.innerHeight+window.scrollY;
+
+  const tinggiHalaman=
+    document.documentElement.scrollHeight;
+
+  if(posisiScroll>=tinggiHalaman-300){
+    const q=searchStok.value.toLowerCase();
+
+    const totalFiltered=semuaStok.filter(s=>
+      (s.nama_barang||'').toLowerCase().includes(q)
+    ).length;
+
+    if(jumlahTampil<totalFiltered){
+      sedangTambahList=true;
+
+      jumlahTampil+=jumlahPerLoad;
+
+      renderStok();
+
+      setTimeout(()=>{
+        sedangTambahList=false;
+      },100);
+    }
+  }
+});
 
 async function tambah(){
 const namaBarang=elNama.value.trim();
@@ -201,3 +259,4 @@ load();
 </script>
 </body>
 </html>
+```
