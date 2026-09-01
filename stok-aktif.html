@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stok Aktif</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+:root{
+  --green:#4fd1a5;
+  --green-dark:#2fb389;
+  --green-soft:#e9f8f2;
+  --bg:#f4fbf8;
+  --text:#134e3a;
+  --white:#ffffff;
+  --border:#d1fae5;
+  --danger:#fee2e2;
+  --danger-text:#991b1b;
+}
+
+*{
+  box-sizing:border-box;
+}
+
+body{
+  margin:0;
+  font-family:system-ui, Arial, sans-serif;
+  background:var(--bg);
+  color:var(--text);
+}
+
+/* ================= HEADER ================= */
+header{
+  background:var(--green);
+  color:white;
+  padding:14px 16px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+header h2{
+  margin:0;
+  font-size:18px;
+}
+
+/* ================= BUTTON ================= */
+button{
+  background:white;
+  color:var(--green-dark);
+  border:1px solid var(--green-dark);
+  padding:8px 14px;
+  border-radius:8px;
+  cursor:pointer;
+  transition:.2s ease;
+}
+
+button:hover{
+  background:var(--green-dark);
+  color:white;
+  transform:translateY(-1px);
+}
+
+button:active{
+  transform:translateY(0);
+}
+
+/* ================= LAYOUT ================= */
+.container{
+  padding:16px;
+  max-width:1200px;
+  margin:auto;
+}
+
+.search{
+  margin-bottom:16px;
+}
+
+.search input{
+  width:100%;
+  padding:10px 12px;
+  border-radius:10px;
+  border:1px solid var(--border);
+}
+
+.search input:focus{
+  outline:none;
+  border-color:var(--green);
+  box-shadow:0 0 0 2px rgba(79,209,165,.2);
+}
+
+/* ================= CARD ================= */
+.card{
+  background:var(--white);
+  border-radius:12px;
+  margin-bottom:24px;
+  overflow:auto;
+}
+
+.card h3{
+  margin:0;
+  padding:14px;
+  background:var(--green-soft);
+  font-size:15px;
+}
+
+/* ================= TABLE ================= */
+table{
+  width:100%;
+  border-collapse:collapse;
+}
+
+th,td{
+  padding:10px;
+  border-bottom:1px solid #eee;
+  font-size:14px;
+  vertical-align:top;
+}
+
+th{
+  background:var(--green-soft);
+  text-align:left;
+  transition:.15s ease;
+}
+
+th:hover{
+  background:#d1fae5;
+}
+
+tbody tr{
+  transition:.15s ease;
+}
+
+tbody tr:hover{
+  background:#ecfdf5;
+}
+
+.empty{
+  text-align:center;
+  padding:16px;
+  opacity:.6;
+}
+
+/* ================= SPINNER ================= */
+.spinner{
+  position:fixed;
+  inset:0;
+  background:rgba(255,255,255,.7);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  z-index:99;
+}
+
+.spinner div{
+  width:42px;
+  height:42px;
+  border:5px solid var(--green-soft);
+  border-top:5px solid var(--green-dark);
+  border-radius:50%;
+  animation:spin 1s linear infinite;
+}
+
+@keyframes spin{
+  to{transform:rotate(360deg)}
+}
+
+/* ================= LOAD MORE ================= */
+.load-more{
+  text-align:center;
+  padding:14px;
+  font-size:13px;
+  color:var(--green-dark);
+  display:none;
+}
+
+.load-more .mini-spinner{
+  width:24px;
+  height:24px;
+  border:3px solid var(--green-soft);
+  border-top:3px solid var(--green-dark);
+  border-radius:50%;
+  animation:spin 1s linear infinite;
+  margin:0 auto 6px;
+}
+
+/* ================= RESPONSIVE ================= */
+@media(max-width:768px){
+  th,td{
+    font-size:13px;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <h2>Stok Aktif</h2>
+  <button onclick="location.href='stokriwayat.html'">Kembali</button>
+</header>
+
+<div class="container">
+
+  <div class="search">
+    <input
+      type="text"
+      id="search"
+      placeholder="Cari barang..."
+      autocomplete="off"
+    >
+  </div>
+
+  <div class="card">
+
+    <h3>Daftar Stok Aktif</h3>
+
+    <table id="stokTable">
+      <thead>
+        <tr>
+          <th style="width:70px;">No</th>
+          <th>Nama Barang</th>
+          <th>Harga Jual</th>
+          <th>Jumlah</th>
+        </tr>
+      </thead>
+
+      <tbody></tbody>
+    </table>
+
+    <div class="load-more" id="loadMore">
+      <div class="mini-spinner"></div>
+      Memuat stok berikutnya...
+    </div>
+
+  </div>
+
+</div>
+
+<div class="spinner" id="spinner">
+  <div></div>
+</div>
+
+<script>
+const SUPABASE_URL = "https://fgoeqtyaxwccxluxdvni.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_ZXJgBsB-sswr7qblwGMnLg_p6QaXKwP";
+
+const db = supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY
+);
+
+const spinner  = document.getElementById('spinner');
+const stokBody = document.querySelector('#stokTable tbody');
+const search   = document.getElementById('search');
+const loadMore = document.getElementById('loadMore');
+
+/* ================= PAGINATION ================= */
+
+const LIMIT = 50;
+
+let offset = 0;
+let sedangLoad = false;
+let masihAdaData = true;
+let queryAktif = '';
+let searchTimer = null;
+
+/* ================= SPINNER ================= */
+
+function spin(v){
+  spinner.style.display = v ? 'flex' : 'none';
+}
+
+function spinMore(v){
+  loadMore.style.display = v ? 'block' : 'none';
+}
+
+/* ================= FORMAT ================= */
+
+function formatHarga(value){
+  if(value == null) return '-';
+
+  return Number(value).toLocaleString('id-ID');
+}
+
+/* ================= LOAD DATA ================= */
+
+async function loadStok(reset = false){
+
+  if(sedangLoad) return;
+  if(!masihAdaData && !reset) return;
+
+  sedangLoad = true;
+
+  if(reset){
+
+    offset = 0;
+    masihAdaData = true;
+    stokBody.innerHTML = '';
+
+    spin(true);
+
+  }else{
+
+    spinMore(true);
+
+  }
+
+  let query = db
+    .from('stok')
+    .select('id,nama_barang,jumlah,harga_jual')
+    .eq('aktif', true)
+    .order('nama_barang', { ascending:true })
+    .range(offset, offset + LIMIT - 1);
+
+  /* SEARCH */
+  if(queryAktif){
+    query = query.ilike(
+      'nama_barang',
+      `%${queryAktif}%`
+    );
+  }
+
+  const { data, error } = await query;
+
+  if(reset){
+    spin(false);
+  }else{
+    spinMore(false);
+  }
+
+  if(error){
+
+    console.error(error);
+
+    if(reset){
+      stokBody.innerHTML = `
+        <tr>
+          <td colspan="4" class="empty">
+            Gagal memuat data stok
+          </td>
+        </tr>
+      `;
+    }
+
+    sedangLoad = false;
+    return;
+  }
+
+  const hasil = data || [];
+
+  /* JIKA TIDAK ADA DATA */
+  if(reset && hasil.length === 0){
+
+    stokBody.innerHTML = `
+      <tr>
+        <td colspan="4" class="empty">
+          Tidak ada data stok
+        </td>
+      </tr>
+    `;
+
+    masihAdaData = false;
+    sedangLoad = false;
+    return;
+  }
+
+  /* NOMOR AWAL */
+  const nomorAwal = offset + 1;
+
+  hasil.forEach((s, index)=>{
+
+    stokBody.insertAdjacentHTML('beforeend', `
+      <tr>
+        <td>${nomorAwal + index}</td>
+        <td>${s.nama_barang || '-'}</td>
+        <td>${formatHarga(s.harga_jual)}</td>
+        <td>${s.jumlah ?? '-'}</td>
+      </tr>
+    `);
+
+  });
+
+  /* JIKA HASIL KURANG DARI 50,
+     BERARTI SUDAH DATA TERAKHIR */
+  if(hasil.length < LIMIT){
+
+    masihAdaData = false;
+
+  }else{
+
+    offset += LIMIT;
+
+  }
+
+  sedangLoad = false;
+}
+
+/* ================= SEARCH ================= */
+
+search.addEventListener('input', ()=>{
+
+  clearTimeout(searchTimer);
+
+  searchTimer = setTimeout(()=>{
+
+    queryAktif = search.value.trim();
+
+    loadStok(true);
+
+  }, 300);
+
+});
+
+/* ================= INFINITE SCROLL ================= */
+
+window.addEventListener('scroll', ()=>{
+
+  if(sedangLoad) return;
+  if(!masihAdaData) return;
+
+  const posisiSekarang =
+    window.innerHeight + window.scrollY;
+
+  const tinggiHalaman =
+    document.documentElement.scrollHeight;
+
+  /*
+    Saat posisi scroll tinggal sekitar
+    300px dari bagian bawah halaman
+  */
+  if(posisiSekarang >= tinggiHalaman - 300){
+
+    loadStok(false);
+
+  }
+
+});
+
+/* ================= LOAD AWAL ================= */
+
+loadStok(true);
+
+</script>
+
+</body>
+</html>

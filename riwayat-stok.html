@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Riwayat Perubahan Stok</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+:root{
+  --green:#4fd1a5;
+  --green-dark:#2fb389;
+  --green-soft:#e9f8f2;
+  --bg:#f4fbf8;
+  --text:#134e3a;
+  --white:#ffffff;
+  --border:#d1fae5;
+  --danger:#fee2e2;
+  --danger-text:#991b1b;
+}
+
+*{
+  box-sizing:border-box;
+}
+
+body{
+  margin:0;
+  font-family:system-ui, Arial, sans-serif;
+  background:var(--bg);
+  color:var(--text);
+}
+
+/* ================= HEADER ================= */
+
+header{
+  background:var(--green);
+  color:white;
+  padding:14px 16px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+header h2{
+  margin:0;
+  font-size:18px;
+}
+
+/* ================= BUTTON ================= */
+
+button{
+  background:white;
+  color:var(--green-dark);
+  border:1px solid var(--green-dark);
+  padding:8px 14px;
+  border-radius:8px;
+  cursor:pointer;
+  transition:.2s ease;
+}
+
+button:hover{
+  background:var(--green-dark);
+  color:white;
+  transform:translateY(-1px);
+}
+
+button:active{
+  transform:translateY(0);
+}
+
+/* ================= DANGER ================= */
+
+button.danger{
+  background:var(--danger);
+  color:var(--danger-text);
+  border:1px solid #fca5a5;
+}
+
+button.danger:hover{
+  background:#fecaca;
+  color:#7f1d1d;
+}
+
+/* ================= LAYOUT ================= */
+
+.container{
+  padding:16px;
+  max-width:1200px;
+  margin:auto;
+}
+
+.search{
+  margin-bottom:16px;
+}
+
+.search input{
+  width:100%;
+  padding:10px 12px;
+  border-radius:10px;
+  border:1px solid var(--border);
+}
+
+.search input:focus{
+  outline:none;
+  border-color:var(--green);
+  box-shadow:0 0 0 2px rgba(79,209,165,.2);
+}
+
+/* ================= CARD ================= */
+
+.card{
+  background:var(--white);
+  border-radius:12px;
+  margin-bottom:24px;
+  overflow:auto;
+}
+
+.card h3{
+  margin:0;
+  padding:14px;
+  background:var(--green-soft);
+  font-size:15px;
+}
+
+/* ================= TABLE ================= */
+
+table{
+  width:100%;
+  border-collapse:collapse;
+}
+
+th,td{
+  padding:10px;
+  border-bottom:1px solid #eee;
+  font-size:14px;
+  vertical-align:top;
+}
+
+th{
+  background:var(--green-soft);
+  text-align:left;
+  transition:.15s ease;
+}
+
+th:hover{
+  background:#d1fae5;
+}
+
+tbody tr{
+  transition:.15s ease;
+}
+
+tbody tr:hover{
+  background:#ecfdf5;
+}
+
+.empty{
+  text-align:center;
+  padding:16px;
+  opacity:.6;
+}
+
+/* ================= BADGE ================= */
+
+.badge{
+  padding:3px 8px;
+  border-radius:999px;
+  font-size:12px;
+  background:var(--green-soft);
+  display:inline-block;
+}
+
+/* ================= SPINNER ================= */
+
+.spinner{
+  position:fixed;
+  inset:0;
+  background:rgba(255,255,255,.7);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  z-index:99;
+}
+
+.spinner div{
+  width:42px;
+  height:42px;
+  border:5px solid var(--green-soft);
+  border-top:5px solid var(--green-dark);
+  border-radius:50%;
+  animation:spin 1s linear infinite;
+}
+
+@keyframes spin{
+  to{transform:rotate(360deg)}
+}
+
+/* ================= LOAD MORE ================= */
+
+.load-more{
+  text-align:center;
+  padding:14px;
+  font-size:13px;
+  color:var(--green-dark);
+  display:none;
+}
+
+.load-more .mini-spinner{
+  width:24px;
+  height:24px;
+  border:3px solid var(--green-soft);
+  border-top:3px solid var(--green-dark);
+  border-radius:50%;
+  animation:spin 1s linear infinite;
+  margin:0 auto 6px;
+}
+
+/* ================= RESPONSIVE ================= */
+
+@media(max-width:768px){
+
+  th,td{
+    font-size:13px;
+  }
+
+  .card{
+    overflow-x:auto;
+  }
+
+  table{
+    min-width:800px;
+  }
+
+}
+
+</style>
+</head>
+
+<body>
+
+<header>
+  <h2>Riwayat Perubahan Stok</h2>
+  <button onclick="location.href='stokriwayat.html'">
+    Kembali
+  </button>
+</header>
+
+
+<div class="container">
+
+  <!-- SEARCH -->
+  <div class="search">
+    <input
+      type="text"
+      id="search"
+      placeholder="Cari barang atau aksi..."
+      autocomplete="off"
+    >
+  </div>
+
+
+  <div class="card">
+
+    <h3>Riwayat Perubahan Stok</h3>
+
+    <!-- HAPUS LOG -->
+    <div style="padding:10px 14px; text-align:right;">
+      <button
+        class="danger"
+        onclick="hapusLogDenganAuth()"
+      >
+        Hapus Semua Riwayat Log
+      </button>
+    </div>
+
+
+    <table id="logTable">
+
+      <thead>
+        <tr>
+          <th style="width:60px;">No</th>
+          <th>Tanggal</th>
+          <th>Aksi</th>
+          <th>Barang</th>
+          <th>Detail Perubahan</th>
+        </tr>
+      </thead>
+
+      <tbody></tbody>
+
+    </table>
+
+
+    <!-- LOADING 50 BERIKUTNYA -->
+    <div class="load-more" id="loadMore">
+      <div class="mini-spinner"></div>
+      Memuat riwayat berikutnya...
+    </div>
+
+  </div>
+
+</div>
+
+
+<!-- SPINNER UTAMA -->
+<div class="spinner" id="spinner">
+  <div></div>
+</div>
+
+
+<script>
+
+const SUPABASE_URL =
+"https://fgoeqtyaxwccxluxdvni.supabase.co";
+
+const SUPABASE_ANON_KEY =
+"sb_publishable_ZXJgBsB-sswr7qblwGMnLg_p6QaXKwP";
+
+const db = supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY
+);
+
+
+/* ================= ELEMENT ================= */
+
+const spinner =
+document.getElementById('spinner');
+
+const logBody =
+document.querySelector('#logTable tbody');
+
+const search =
+document.getElementById('search');
+
+const loadMore =
+document.getElementById('loadMore');
+
+
+/* ================= PAGINATION ================= */
+
+const LIMIT = 50;
+
+let offset = 0;
+
+let sedangLoad = false;
+
+let masihAdaData = true;
+
+let queryAktif = '';
+
+let searchTimer = null;
+
+
+/* ================= SPINNER ================= */
+
+function spin(v){
+
+  spinner.style.display =
+  v ? 'flex' : 'none';
+
+}
+
+function spinMore(v){
+
+  loadMore.style.display =
+  v ? 'block' : 'none';
+
+}
+
+
+/* ================= FORMAT TANGGAL ================= */
+
+function formatTanggal(tanggal){
+
+  if(!tanggal)
+    return '-';
+
+  return new Date(tanggal)
+    .toLocaleString('id-ID');
+
+}
+
+
+/* ================= DETAIL PERUBAHAN ================= */
+
+function buatDetail(l){
+
+  let detail = '';
+
+
+  /* JUMLAH */
+
+  if(l.jumlah_sebelum != null){
+
+    detail +=
+    `Qty: ${l.jumlah_sebelum} → ${l.jumlah_sesudah}<br>`;
+
+  }
+
+
+  /* HARGA BELI */
+
+  if(l.harga_beli_sebelum != null){
+
+    detail +=
+    `Harga Beli: ${l.harga_beli_sebelum} → ${l.harga_beli_sesudah}<br>`;
+
+  }
+
+
+  /* HARGA JUAL */
+
+  if(l.harga_jual_sebelum != null){
+
+    detail +=
+    `Harga Jual: ${l.harga_jual_sebelum} → ${l.harga_jual_sesudah}<br>`;
+
+  }
+
+
+  /* NAMA BARANG */
+
+  if(l.nama_lama){
+
+    detail +=
+    `Nama: ${l.nama_lama} → ${l.nama_barang}<br>`;
+
+  }
+
+
+  /* JIKA TIDAK ADA DETAIL */
+
+  if(!detail){
+
+    detail =
+    l.keterangan || '-';
+
+  }
+
+
+  return detail;
+
+}
+
+
+/* ================= LOAD RIWAYAT ================= */
+
+async function loadLog(reset = false){
+
+
+  if(sedangLoad)
+    return;
+
+
+  if(!masihAdaData && !reset)
+    return;
+
+
+  sedangLoad = true;
+
+
+  /* RESET */
+
+  if(reset){
+
+    offset = 0;
+
+    masihAdaData = true;
+
+    logBody.innerHTML = '';
+
+    spin(true);
+
+  }else{
+
+    spinMore(true);
+
+  }
+
+
+  /* ================= QUERY ================= */
+
+  let query = db
+
+    .from('log_stok')
+
+    .select('*')
+
+    .order(
+      'tgl',
+      { ascending:false }
+    )
+
+    .range(
+      offset,
+      offset + LIMIT - 1
+    );
+
+
+  /* ================= SEARCH ================= */
+
+  if(queryAktif){
+
+    const q =
+    queryAktif.replace(/,/g,'');
+
+    query = query.or(
+      `nama_barang.ilike.%${q}%,aksi.ilike.%${q}%`
+    );
+
+  }
+
+
+  const { data, error } =
+  await query;
+
+
+  /* ================= STOP SPINNER ================= */
+
+  if(reset){
+
+    spin(false);
+
+  }else{
+
+    spinMore(false);
+
+  }
+
+
+  /* ================= ERROR ================= */
+
+  if(error){
+
+    console.error(error);
+
+    if(reset){
+
+      logBody.innerHTML = `
+        <tr>
+          <td
+            colspan="5"
+            class="empty"
+          >
+            Gagal memuat riwayat stok
+          </td>
+        </tr>
+      `;
+
+    }
+
+    sedangLoad = false;
+
+    return;
+
+  }
+
+
+  const hasil =
+  data || [];
+
+
+  /* ================= DATA KOSONG ================= */
+
+  if(reset && hasil.length === 0){
+
+    logBody.innerHTML = `
+      <tr>
+        <td
+          colspan="5"
+          class="empty"
+        >
+          Belum ada riwayat stok
+        </td>
+      </tr>
+    `;
+
+    masihAdaData = false;
+
+    sedangLoad = false;
+
+    return;
+
+  }
+
+
+  /* ================= NOMOR URUT ================= */
+
+  const nomorAwal =
+  offset + 1;
+
+
+  /* ================= TAMPILKAN DATA ================= */
+
+  hasil.forEach(
+    (l,index)=>{
+
+
+      const detail =
+      buatDetail(l);
+
+
+      logBody.insertAdjacentHTML(
+        'beforeend',
+        `
+
+        <tr>
+
+          <td>
+            ${nomorAwal + index}
+          </td>
+
+          <td>
+            ${formatTanggal(l.tgl)}
+          </td>
+
+          <td>
+            <span class="badge">
+              ${l.aksi || '-'}
+            </span>
+          </td>
+
+          <td>
+            ${l.nama_barang || '-'}
+          </td>
+
+          <td>
+            ${detail}
+          </td>
+
+        </tr>
+
+        `
+      );
+
+    }
+  );
+
+
+  /* ================= CEK MASIH ADA DATA ================= */
+
+  if(hasil.length < LIMIT){
+
+    masihAdaData = false;
+
+  }else{
+
+    offset += LIMIT;
+
+  }
+
+
+  sedangLoad = false;
+
+}
+
+
+/* ================= SEARCH ================= */
+
+search.addEventListener(
+  'input',
+  ()=>{
+
+
+    clearTimeout(
+      searchTimer
+    );
+
+
+    searchTimer =
+    setTimeout(()=>{
+
+
+      queryAktif =
+      search.value.trim();
+
+
+      loadLog(true);
+
+
+    },300);
+
+  }
+);
+
+
+/* ================= INFINITE SCROLL ================= */
+
+window.addEventListener(
+  'scroll',
+  ()=>{
+
+
+    if(sedangLoad)
+      return;
+
+
+    if(!masihAdaData)
+      return;
+
+
+    const posisiScroll =
+
+      window.innerHeight +
+
+      window.scrollY;
+
+
+    const tinggiHalaman =
+
+      document.documentElement
+        .scrollHeight;
+
+
+    /*
+
+      Ketika scroll tinggal
+      sekitar 300px dari bawah
+
+      ambil 50 data lagi
+
+    */
+
+    if(
+      posisiScroll >=
+      tinggiHalaman - 300
+    ){
+
+      loadLog(false);
+
+    }
+
+  }
+);
+
+
+/* ================= HAPUS SEMUA LOG ================= */
+
+async function hapusLogDenganAuth(){
+
+
+  const username =
+  prompt(
+    "Masukkan username admin:"
+  );
+
+
+  if(!username)
+    return;
+
+
+  const password =
+  prompt(
+    "Masukkan password admin:"
+  );
+
+
+  if(!password)
+    return;
+
+
+  spin(true);
+
+
+  /* ================= VERIFIKASI ADMIN ================= */
+
+  const {
+    data:admin,
+    error
+  } = await db
+
+    .from('admin')
+
+    .select('id')
+
+    .eq(
+      'username',
+      username
+    )
+
+    .eq(
+      'password',
+      password
+    )
+
+    .single();
+
+
+  if(error || !admin){
+
+    spin(false);
+
+    alert(
+      "Username atau password admin salah!"
+    );
+
+    return;
+
+  }
+
+
+  /* ================= KONFIRMASI ================= */
+
+  if(
+    !confirm(
+      "YAKIN hapus SEMUA riwayat log stok? Tindakan ini tidak bisa dibatalkan!"
+    )
+  ){
+
+    spin(false);
+
+    return;
+
+  }
+
+
+  /* ================= HAPUS ================= */
+
+  const {
+    error:hapusError
+  } = await db
+
+    .from('log_stok')
+
+    .delete()
+
+    .not('id','is',null);
+
+
+  if(hapusError){
+
+    console.error(hapusError);
+
+    spin(false);
+
+    alert(
+      "Gagal menghapus riwayat log stok"
+    );
+
+    return;
+
+  }
+
+
+  spin(false);
+
+
+  alert(
+    "Semua riwayat log stok berhasil dihapus"
+  );
+
+
+  /* RESET SEARCH */
+
+  search.value = '';
+
+  queryAktif = '';
+
+
+  /* LOAD ULANG */
+
+  loadLog(true);
+
+}
+
+
+/* ================= LOAD AWAL ================= */
+
+loadLog(true);
+
+</script>
+
+</body>
+</html>
